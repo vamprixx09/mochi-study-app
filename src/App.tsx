@@ -99,7 +99,7 @@ export default function App() {
             if (Notification.permission === 'granted') {
               new Notification('Mochi Reminder 🔔', {
                 body: `Time for: ${task.text}`,
-                icon: '/mochi-icon.png'
+                icon: 'https://drive.google.com/uc?export=download&id=1QskuwmZXGoTYGqicXnZkj29qjA_hKKg7'
               });
             }
           }
