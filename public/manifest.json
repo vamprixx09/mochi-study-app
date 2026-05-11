@@ -1,0 +1,38 @@
+{
+  "name": "Mochi Study // Kawaii AI Companion",
+  "short_name": "Mochi Study",
+  "description": "Your aesthetic AI study companion for focus, flashcards, and fun. 🍡",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF9F5",
+  "theme_color": "#FFC1CC",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3257/3257692.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3257/3257692.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/7510/7510168.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["education", "productivity", "lifestyle"],
+  "screenshots": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3257/3257692.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "label": "Mochi Home Screen"
+    }
+  ]
+}

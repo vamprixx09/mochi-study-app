@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@300;400;500;600&family=Caveat:wght@400;700&family=Quicksand:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Quicksand", "Nunito", sans-serif;
+  --font-notes: "Caveat", cursive;
+
+  --color-mochi-pink: #FFB7C5;
+  --color-mochi-lavender: #C5B9E0;
+  --color-mochi-mint: #C5E6D6;
+  --color-mochi-blue: #A3D4E0;
+  --color-mochi-peach: #FFDAB9;
+}
+
+@layer base {
+  body {
+    @apply font-sans;
+  }
+}
+
+/* Custom Aesthetic Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 183, 197, 0.3);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 183, 197, 0.5);
+}
+
+.glass {
+  @apply bg-white/40 backdrop-blur-md border border-white/20;
+}
+
+.grain {
+  position: relative;
+}
+
+.grain::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+  z-index: 10;
+}
+
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-mochi {
+  animation: bounce-subtle 3s ease-in-out infinite;
+}
+
+.sparkle-button {
+  @apply transition-all duration-300 relative overflow-hidden;
+}
+
+.sparkle-button:hover {
+  @apply transform scale-105;
+}
+
+.sparkle-button::after {
+  content: "✨";
+  @apply absolute -top-1 -right-1 opacity-0 transition-opacity duration-300;
+}
+
+.sparkle-button:hover::after {
+  @apply opacity-100;
+}
+

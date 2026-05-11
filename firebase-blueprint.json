@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "bio": { "type": "string" },
+        "pfp": { "type": "string" },
+        "streak": { "type": "number" },
+        "totalHours": { "type": "number" },
+        "lastStudyDate": { "type": "string", "format": "date-time" },
+        "tasksCompleted": { "type": "number" },
+        "flashcardsMastered": { "type": "number" },
+        "theme": { "type": "string", "enum": ["cream", "cloud", "night"] },
+        "soundEnabled": { "type": "boolean" },
+        "aiVoiceEnabled": { "type": "boolean" },
+        "language": { "type": "string" },
+        "customStickers": { "type": "array" }
+      },
+      "required": ["uid", "name", "email"]
+    },
+    "UserData": {
+      "title": "UserData",
+      "description": "Aggregated user data for offline/sync",
+      "type": "object",
+      "properties": {
+        "flashcards": { "type": "array" },
+        "tasks": { "type": "array" },
+        "studyLogs": { "type": "array" },
+        "plans": { "type": "array" },
+        "chatHistory": { "type": "array" },
+        "calendarStickers": { "type": "array" }
+      }
+    },
+    "SystemConfig": {
+      "title": "SystemConfig",
+      "description": "Global application configuration",
+      "type": "object",
+      "properties": {
+        "broadcastMessage": { "type": "string" },
+        "maintenanceMode": { "type": "boolean" },
+        "totalUsersCount": { "type": "number" },
+        "footerCredits": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "userData/{userId}": {
+      "schema": "UserData",
+      "description": "User application data"
+    },
+    "system/config": {
+      "schema": "SystemConfig",
+      "description": "Global system settings"
+    }
+  }
+}
