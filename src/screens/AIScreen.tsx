@@ -797,7 +797,7 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
                        <audio src={msg.audioUrl} controls className="h-8 max-w-[200px]" />
                     </div>
                   )}
-                  <div className="prose prose-sm dark:prose-invert break-words">
+                  <div className="prose prose-sm dark:prose-invert break-words selectable">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
 

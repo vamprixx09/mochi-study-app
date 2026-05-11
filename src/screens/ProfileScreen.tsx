@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   User, Settings, Award, Download, 
-  Trash2, Info, ChevronRight, X, Edit, Check, Star, MessageCircle, ShieldCheck, Instagram,
+  Trash2, Info, ChevronRight, X, Edit, Check, Star, MessageCircle, ShieldCheck, Instagram, Pin,
   Volume2, VolumeX, Globe, Upload, Sun, Cloud, Moon, Play, Pause, Music, Crown, Sparkles, Heart, Palette
 } from 'lucide-react';
 import { UserProfile, Flashcard, Task, StudyLog } from '../types';
@@ -559,7 +559,7 @@ export default function ProfileScreen({
                   </div>
                   <ChevronRight className="w-4 h-4 opacity-20" />
                 </button>
-                {deferredPrompt && (
+                {deferredPrompt ? (
                   <button onClick={onInstall} className="w-full flex items-center justify-between p-3 bg-mochi-pink/10 hover:bg-mochi-pink/20 rounded-2xl transition-all group border-2 border-mochi-pink/20">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-mochi-pink text-white rounded-xl shadow-sm"><Download className="w-4 h-4" /></div>
@@ -567,6 +567,15 @@ export default function ProfileScreen({
                     </div>
                     <ChevronRight className="w-4 h-4 text-mochi-pink" />
                   </button>
+                ) : (
+                  <div className="p-4 glass rounded-3xl border border-white/40 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-bold font-heading opacity-60">
+                      <Download className="w-4 h-4" /> How to Install 🍡
+                    </div>
+                    <p className="text-[10px] opacity-60 leading-relaxed italic">
+                      To install Mochi as an app on Android, tap the 3 dots (⋮) in Chrome and select "Install app". On iOS, tap "Share" and "Add to Home Screen". ✨
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -613,6 +622,10 @@ export default function ProfileScreen({
                 <button onClick={() => window.open('https://www.instagram.com/vamp_.rixx/', '_blank')} className="p-3 glass rounded-2xl text-mochi-pink hover:scale-110 transition-all font-bold flex flex-col items-center gap-1">
                   <Instagram className="w-5 h-5" />
                   <span className="text-[7px] uppercase">Insta</span>
+                </button>
+                <button onClick={() => window.open('https://pin.it/QsMEAVk0d', '_blank')} className="p-3 glass rounded-2xl text-[#E60023] hover:scale-110 transition-all font-bold flex flex-col items-center gap-1">
+                  <Pin className="w-5 h-5" />
+                  <span className="text-[7px] uppercase">Pin</span>
                 </button>
                 <button onClick={handleRateApp} className="p-3 glass rounded-2xl text-mochi-pink hover:scale-110 transition-all font-bold flex flex-col items-center gap-1">
                   <Star className="w-5 h-5" />

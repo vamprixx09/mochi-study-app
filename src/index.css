@@ -16,7 +16,17 @@
 @layer base {
   body {
     @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-touch-callout: none;
+    overflow-x: hidden;
   }
+}
+
+/* Allow selection in specific areas */
+.selectable, input, textarea, [contenteditable="true"], .prose {
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 /* Custom Aesthetic Scrollbar */

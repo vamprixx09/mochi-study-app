@@ -719,7 +719,7 @@ export default function PlannerScreen({
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] opacity-40 italic flex items-center gap-2">
                   <Coffee className="w-4 h-4" /> The Battle Plan
                 </h3>
-                <div className="glass p-6 rounded-[2.5rem] text-xs leading-relaxed opacity-80 border-white/60">
+                <div className="glass p-6 rounded-[2.5rem] text-xs leading-relaxed opacity-80 border-white/60 selectable">
                    <Markdown>{examPrepData.breakdown}</Markdown>
                 </div>
               </section>
@@ -758,7 +758,7 @@ export default function PlannerScreen({
                 </h3>
                 <div className="space-y-4">
                   {examPrepData.quiz.map((q: any, idx: number) => (
-                    <div key={idx} className="glass p-6 rounded-[2.5rem] space-y-4 border-white/60">
+                    <div key={idx} className="glass p-6 rounded-[2.5rem] space-y-4 border-white/60 selectable">
                        <p className="text-xs font-bold leading-relaxed">{q.question}</p>
                        <div className="grid grid-cols-1 gap-2">
                          {q.options.map((opt: string, i: number) => (
