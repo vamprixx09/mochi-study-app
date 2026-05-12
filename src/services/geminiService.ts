@@ -1,12 +1,33 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { StudyPlan } from "../types";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY;
+
+// Check if the key is effectively missing or a placeholder
+const isValidKey = (key: string | undefined): boolean => {
+  if (!key) return false;
+  const k = String(key).trim();
+  // Filter out any remaining common placeholders or invalid types
+  if (['MY_GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY', 'placeholder', 'undefined', 'null', ''].includes(k)) return false;
+  return k.length >= 10;
+};
 
 let ai: GoogleGenAI | null = null;
 
-if (GEMINI_API_KEY) {
-  ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+function getAI(): GoogleGenAI {
+  if (!ai) {
+    if (!isValidKey(GEMINI_API_KEY)) {
+      console.warn("Gemini API key validation failed. Value received:", GEMINI_API_KEY);
+      throw new Error(`Gemini API key is missing or incomplete! 🎀
+      
+1. Open the [Settings] menu in the top right.
+2. Select [Secrets].
+3. Add or update [GEMINI_API_KEY] with your key from AI Studio or Google Cloud.
+4. Refresh the app! ✨`);
+    }
+    ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY! });
+  }
+  return ai;
 }
 
 export async function chatWithMochiStream(
@@ -16,8 +37,6 @@ export async function chatWithMochiStream(
   imageBase64?: string,
   audioBase64?: string
 ) {
-  if (!ai) throw new Error("Gemini API key is not configured.");
-
   const model = "gemini-3-flash-preview";
   
   const systemInstruction = `You are Mochi, a gentle, encouraging, and highly intelligent study companion. 
@@ -54,7 +73,7 @@ export async function chatWithMochiStream(
 
   contents.push({ role: 'user', parts: userParts });
 
-  const stream = await ai.models.generateContentStream({
+  const stream = await getAI().models.generateContentStream({
     model,
     contents,
     config: {
@@ -73,8 +92,6 @@ export async function chatWithMochiStream(
 }
 
 export async function generateStudyPlan(subject: string, examDate: string, availableHours: number): Promise<Partial<StudyPlan>> {
-  if (!ai) throw new Error("Gemini API key is not configured.");
-
   const model = "gemini-3-flash-preview";
   
   const prompt = `Create a study plan for the subject: ${subject}. 
@@ -84,7 +101,7 @@ export async function generateStudyPlan(subject: string, examDate: string, avail
   - days: an array of daily tasks with 'day' (number), 'focus' (topic), 'tasks' (array of strings), 'minutes' (number)
   - tips: an array of 3-5 study tips.`;
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model,
     contents: prompt,
     config: {
@@ -121,14 +138,12 @@ export async function generateStudyPlan(subject: string, examDate: string, avail
 }
 
 export async function generateFlashcards(textOrTopic: string): Promise<{ front: string, back: string }[]> {
-  if (!ai) throw new Error("Gemini API key is not configured.");
-
   const model = "gemini-3-flash-preview";
   
   const prompt = `Generate 5-10 high-quality study flashcards based on this topic or text: "${textOrTopic}".
   Return a JSON array of objects with 'front' (question/term) and 'back' (answer/definition).`;
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model,
     contents: prompt,
     config: {
@@ -151,8 +166,6 @@ export async function generateFlashcards(textOrTopic: string): Promise<{ front: 
 }
 
 export async function generateMochiImage(prompt: string, imageBase64?: string): Promise<string> {
-  if (!ai) throw new Error("Gemini API key is not configured.");
-
   // Using the general image generation model
   const model = "gemini-2.5-flash-image";
   
@@ -176,7 +189,7 @@ export async function generateMochiImage(prompt: string, imageBase64?: string): 
   });
 
   try {
-    const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
       model,
       contents: { parts },
       config: {
@@ -206,8 +219,6 @@ export async function generateMochiImage(prompt: string, imageBase64?: string): 
 }
 
 export async function generateExamPrep(subject: string): Promise<any> {
-  if (!ai) throw new Error("Gemini API key is not configured.");
-
   const model = "gemini-3-flash-preview";
   
   const prompt = `Create a 7-day exam preparation plan for: ${subject}. 
@@ -219,7 +230,7 @@ export async function generateExamPrep(subject: string): Promise<any> {
   - motivation: A cute motivational message for exam season.
   Return JSON.`;
 
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model,
     contents: prompt,
     config: {
@@ -260,11 +271,9 @@ export async function generateExamPrep(subject: string): Promise<any> {
 }
 
 export async function generateNotes(topic: string): Promise<string> {
-  if (!ai) throw new Error("Gemini API key is not configured.");
-
   const model = "gemini-3-flash-preview";
   
-  const response = await ai.models.generateContent({
+  const response = await getAI().models.generateContent({
     model,
     contents: `Write structured, easy-to-read study notes for the topic: ${topic}. 
     Use bullet points, bold terms, and a friendly tone. Use Markdown.`,

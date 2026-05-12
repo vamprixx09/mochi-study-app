@@ -4,7 +4,7 @@ import {
   Send, Image as ImageIcon, Sparkles, Brain, Clock, Heart, Loader2, 
   Phone, Mic, FileText, XCircle, Paperclip, User, Download, 
   History, PlusCircle, Volume2, Trash2, Copy, Pencil, RotateCcw, Check, CheckCircle,
-  VolumeX, Coffee, AlertCircle, Info
+  VolumeX, Coffee, AlertCircle, Info, ExternalLink
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage, UserProfile, ChatSession } from '../types';
@@ -58,6 +58,7 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [isSTTSupported, setIsSTTSupported] = useState(false);
   const [micPermissionState, setMicPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+  const [hasMicError, setHasMicError] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -135,15 +136,17 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
       recorder.start();
       setIsRecording(true);
       setMicPermissionState('granted');
+      setHasMicError(false);
       showToast("Recording voice mail... 🎤");
       playSound('pop');
     } catch (err) {
       console.error("Failed to start recording:", err);
       setMicPermissionState('denied');
+      setHasMicError(true);
       
       const errorMsg = err instanceof Error ? err.message : String(err);
       if (errorMsg.includes('Permission denied') || errorMsg.includes('NotAllowedError')) {
-        showToast("Mic blocked! 🚫 Try checking browser settings or opening in a new tab.");
+        showToast("Mic blocked! 🚫 Please check settings or use the 'Open in New Tab' button below.");
       } else {
         showToast(`Recording error: ${errorMsg} 🥺`);
       }
@@ -1024,25 +1027,50 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
           </div>
         )}
         
-        {micPermissionState === 'denied' && (
-          <div className="flex flex-col gap-1 mb-2">
-            <button 
-              onClick={() => handleStartRecording()}
-              className="flex items-center gap-2 px-4 py-1.5 bg-red-50 text-red-500 rounded-full w-fit border border-red-200 hover:bg-red-100 transition-all shadow-sm"
-            >
-              <AlertCircle className="w-3 h-3" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Mic Blocked! Tap here to try again 🎤</span>
-            </button>
-            <p className="text-[9px] text-gray-400 ml-4 italic flex flex-col gap-0.5">
-              <span className="flex items-center gap-1">
-                <Sparkles className="w-2 h-2" /> 
-                Click the LOCK icon in your URL bar to Allow Mic 🎀
-              </span>
-              <span className="flex items-center gap-1 opacity-70">
-                <Info className="w-2 h-2" /> 
-                Still stuck? Try opening the app in a **New Tab** ↗️
-              </span>
-            </p>
+        {(micPermissionState === 'denied' || hasMicError) && (
+          <div className="flex flex-col gap-2 mb-3 p-3 bg-rose-50/50 rounded-3xl border border-rose-100 shadow-sm transition-all animate-in fade-in slide-in-from-bottom-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button 
+                onClick={() => handleStartRecording()}
+                className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-full w-fit hover:bg-rose-600 transition-all shadow-md active:scale-95"
+              >
+                <Mic className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Retry Mic</span>
+              </button>
+              
+              {window.self !== window.top && (
+                <button 
+                  onClick={() => window.open(window.location.href, '_blank')}
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-mochi-mint-dark rounded-full w-fit border border-mochi-mint/30 hover:bg-gray-50 transition-all shadow-sm active:scale-95"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-mochi-mint" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-mochi-mint-dark">Fix in New Tab</span>
+                </button>
+              )}
+              
+              <button 
+                onClick={() => setHasMicError(false)}
+                className="p-2 text-rose-300 hover:text-rose-500 transition-colors"
+                title="Dismiss"
+              >
+                <XCircle className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="space-y-1.5 px-1">
+              <p className="text-[11px] text-rose-600 font-bold flex items-center gap-1.5 leading-tight">
+                <AlertCircle className="w-3.5 h-3.5" />
+                Recording Blocked 🍡
+              </p>
+              <p className="text-[10px] text-rose-500/80 leading-relaxed italic">
+                Most common fix: Click the **Lock icon** 🔒 in your URL bar and set Microphone to **Allow**, then click Retry! ✨
+              </p>
+              {window.self !== window.top && (
+                <p className="text-[9px] text-rose-400 opacity-80 leading-relaxed font-medium">
+                  Still stuck? The **Fix in New Tab** ↗️ button usually solves browser sandbox issues!
+                </p>
+              )}
+            </div>
           </div>
         )}
         
