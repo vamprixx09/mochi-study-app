@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Task, StudyPlan, StudyLog, UserProfile, SubTask, CalendarSticker, LanguageImmersionData } from '../types';
 import { generateStudyPlan, generateExamPrep } from '../services/geminiService';
+import { isFeatureUnlocked } from '../lib/premiumUtils';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '../lib/utils';
 import confetti from 'canvas-confetti';
@@ -125,6 +126,11 @@ export default function PlannerScreen({
 
   const applyTemplate = (template: typeof PREMIUM_TEMPLATES[0]) => {
     if (!user.isPremium) {
+      onOpenPremium();
+      return;
+    }
+    
+    if (template.id === 'template_exam' && !isFeatureUnlocked(user, 'ai_tools')) {
       onOpenPremium();
       return;
     }
@@ -498,7 +504,7 @@ export default function PlannerScreen({
 
         {activeSubTab === 'planner' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-            {!user.isPremium ? (
+            {!isFeatureUnlocked(user, 'ai_tools') ? (
               <div className="glass p-12 rounded-[3.5rem] text-center space-y-6 bg-gradient-to-br from-yellow-50 via-white to-pink-50 border border-yellow-100 shadow-xl relative overflow-hidden group">
                 <div className="absolute top-4 right-6 p-2 bg-yellow-400 text-white rounded-full"><Crown className="w-4 h-4" /></div>
                 <div className="w-20 h-20 bg-white rounded-full mx-auto flex items-center justify-center text-4xl shadow-md group-hover:rotate-12 transition-transform">🧠</div>
@@ -982,16 +988,16 @@ export default function PlannerScreen({
                           <button 
                             key={idx} 
                             onClick={() => {
-                              if (!user.isPremium) { setShowDayModal(false); onOpenPremium(); return; }
+                              if (!isFeatureUnlocked(user, 'stickers')) { setShowDayModal(false); onOpenPremium(); return; }
                               addDaySticker(selectedDate.toISOString(), s);
                             }}
                             className={cn(
                               "w-8 h-8 rounded-xl flex items-center justify-center transition-all text-lg relative",
-                              user.isPremium ? "glass hover:scale-110 active:scale-95" : "bg-black/5 opacity-40 grayscale"
+                              isFeatureUnlocked(user, 'stickers') ? "glass hover:scale-110 active:scale-95" : "bg-black/5 opacity-40 grayscale"
                             )}
                           >
                             {s}
-                            {!user.isPremium && <div className="absolute inset-0 flex items-center justify-center"><Crown className="w-3 h-3 text-white/50" /></div>}
+                            {!isFeatureUnlocked(user, 'stickers') && <div className="absolute inset-0 flex items-center justify-center"><Crown className="w-3 h-3 text-white/50" /></div>}
                           </button>
                         ))}
                       </div>

@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   User, Settings, Award, Download, 
   Trash2, Info, ChevronRight, X, Edit, Check, Star, MessageCircle, ShieldCheck, Instagram, Pin,
-  Volume2, VolumeX, Globe, Upload, Sun, Cloud, Moon, Play, Pause, Music, Crown, Sparkles, Heart, Palette
+  Volume2, VolumeX, Globe, Upload, Sun, Cloud, Moon, Play, Pause, Music, Crown, Sparkles, Heart, Palette,
+  Calendar, Clock, History, CheckCircle2
 } from 'lucide-react';
 import { UserProfile, Flashcard, Task, StudyLog } from '../types';
+import { isFeatureUnlocked } from '../lib/premiumUtils';
 import { cn } from '../lib/utils';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { getTranslation } from '../lib/translations';
@@ -123,6 +125,7 @@ export default function ProfileScreen({
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   
   const t = (key: string) => getTranslation(user.language || 'en', key);
 
@@ -300,8 +303,8 @@ export default function ProfileScreen({
                           onClick={() => { playSound('sparkle'); onOpenCreatorDashboard(); }}
                           className="mt-1 flex items-center gap-1 px-3 py-1 bg-mochi-blue/10 rounded-full border border-mochi-blue/20 hover:bg-mochi-blue/20 transition-all"
                         >
-                          <ShieldCheck className="w-3 h-3 text-mochi-blue" />
-                          <span className="text-[8px] font-bold text-mochi-blue uppercase tracking-widest">Creator</span>
+                          <ShieldCheck className="w-3 h-3 text-[#2D5A8E]" />
+                          <span className="text-[8px] font-bold text-[#2D5A8E] uppercase tracking-widest">Creator</span>
                         </button>
                       )}
                     </div>
@@ -350,6 +353,81 @@ export default function ProfileScreen({
                   />
                   <button onClick={() => { setIsEditing(false); playSound('pop'); }} className="w-full py-3 bg-mochi-pink text-white rounded-2xl font-bold font-heading shadow-lg">{t('save_btn')}</button>
                 </div>
+              )}
+
+              {/* Premium Status Card */}
+              {user.isPremium && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="w-full glass p-5 rounded-[2.5rem] bg-gradient-to-br from-yellow-50/50 via-white to-pink-50/40 border border-yellow-100/50 shadow-sm relative overflow-hidden"
+                >
+                  <div className="absolute -right-4 -top-4 w-20 h-20 bg-yellow-200/20 blur-3xl rounded-full" />
+                  
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-yellow-400 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-yellow-100">
+                        <Crown className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-600">Active Membership</h4>
+                        <div className="flex items-center gap-2">
+                           <span className="text-sm font-black font-heading text-gray-800 uppercase italic">
+                             {user.premiumPlan} Premium
+                           </span>
+                           <CheckCircle2 className="w-3 h-3 text-mochi-mint" />
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setShowHistory(true)}
+                      className="p-2 glass rounded-xl text-mochi-pink hover:bg-white/60 transition-all"
+                    >
+                      <History className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/40 p-3 rounded-2xl border border-white/60">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="w-3 h-3 text-mochi-blue" />
+                        <span className="text-[8px] font-black uppercase text-mochi-blue/60 tracking-wider">Activated</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-700">
+                        {user.premiumActivatedAt ? new Date(user.premiumActivatedAt).toLocaleDateString() : 'Active'}
+                      </span>
+                    </div>
+                    <div className="bg-white/40 p-3 rounded-2xl border border-white/60">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock className="w-3 h-3 text-mochi-pink" />
+                        <span className="text-[8px] font-black uppercase text-mochi-pink/60 tracking-wider">Expiry</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-700">
+                        {user.premiumPlan === 'lifetime' ? 'Permanent' : (user.premiumExpiresAt ? new Date(user.premiumExpiresAt).toLocaleDateString() : 'N/A')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {user.premiumPlan !== 'lifetime' && user.premiumExpiresAt && (
+                    <div className="mt-4 pt-4 border-t border-yellow-100/30">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-[8px] font-bold text-yellow-600 uppercase">Subscription Progress</span>
+                        <span className="text-[8px] font-bold text-yellow-600">
+                          {Math.max(0, Math.ceil((new Date(user.premiumExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days left
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-yellow-100/50 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ 
+                            width: `${Math.min(100, Math.max(0, 100 - ((new Date(user.premiumExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * (user.premiumPlan === 'starter' ? 30 : 90))) * 100))}%` 
+                          }}
+                          className="h-full bg-yellow-400"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
               )}
 
               {/* Premium Teaser */}
@@ -411,36 +489,39 @@ export default function ProfileScreen({
                 
                 {/* Pro Themes */}
                 <ThemeBtn 
+                  user={user}
                   icon={Sparkles} 
                   label="Matcha" 
                   isPro 
                   active={user.theme === 'matcha'} 
                   onClick={() => {
-                    if (!user.isPremium) { onOpenPremium(); return; }
+                    if (!isFeatureUnlocked(user, 'themes')) { onOpenPremium(); return; }
                     setUser(prev => ({ ...prev, theme: 'matcha' }));
                     playSound('pop');
                   }} 
                   color="bg-[#E2F0D9]" 
                 />
                 <ThemeBtn 
+                  user={user}
                   icon={Heart} 
                   label="Sakura" 
                   isPro 
                   active={user.theme === 'sakura'} 
                   onClick={() => {
-                    if (!user.isPremium) { onOpenPremium(); return; }
+                    if (!isFeatureUnlocked(user, 'themes')) { onOpenPremium(); return; }
                     setUser(prev => ({ ...prev, theme: 'sakura' }));
                     playSound('pop');
                   }} 
                   color="bg-[#FFE4E1]" 
                 />
                 <ThemeBtn 
+                  user={user}
                   icon={Award} 
                   label="Berry" 
                   isPro 
                   active={user.theme === 'berry'} 
                   onClick={() => {
-                    if (!user.isPremium) { onOpenPremium(); return; }
+                    if (!isFeatureUnlocked(user, 'themes')) { onOpenPremium(); return; }
                     setUser(prev => ({ ...prev, theme: 'berry' }));
                     playSound('pop');
                   }} 
@@ -650,6 +731,79 @@ export default function ProfileScreen({
             onOpenPremium={onOpenPremium} 
           />
         )}
+        {showHistory && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-sm glass rounded-[3rem] p-8 space-y-6 shadow-2xl relative overflow-hidden flex flex-col max-h-[80vh]"
+            >
+              <div className="flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 bg-yellow-400 rounded-2xl flex items-center justify-center text-white shadow-sm">
+                    <History className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black font-heading text-[#2D5A8E] uppercase tracking-tight">Upgrade Records</h3>
+                    <p className="text-[10px] font-bold text-gray-500">Your journey with Mochi Pro</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowHistory(false)} className="p-2 glass rounded-full text-gray-400 hover:text-gray-600">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2 py-2">
+                {!user.premiumHistory || user.premiumHistory.length === 0 ? (
+                  <div className="text-center py-10 opacity-30 italic text-xs">No upgrade history found.</div>
+                ) : (
+                  user.premiumHistory.slice().reverse().map((entry, i) => (
+                    <div key={i} className="glass p-4 rounded-2xl bg-white space-y-2 border border-blue-50 shadow-sm">
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-2">
+                           <span className={cn(
+                             "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest",
+                             entry.plan === 'lifetime' ? "bg-yellow-100 text-yellow-600" : "bg-mochi-pink/10 text-mochi-pink"
+                           )}>
+                             {entry.plan} Plan
+                           </span>
+                           {i === 0 && user.isPremium && <span className="w-1.5 h-1.5 bg-mochi-mint rounded-full animate-pulse" />}
+                         </div>
+                         <span className="text-[8px] font-bold opacity-30">{new Date(entry.activatedAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-[9px] font-bold text-gray-500">
+                           <Calendar className="w-3 h-3 opacity-50" />
+                           Started: {new Date(entry.activatedAt).toLocaleDateString()}
+                        </div>
+                        {entry.expiresAt && (
+                          <div className="flex items-center gap-2 text-[9px] font-bold text-gray-500">
+                            <Clock className="w-3 h-3 opacity-50" />
+                            Expired: {new Date(entry.expiresAt).toLocaleDateString()}
+                          </div>
+                        )}
+                        {entry.plan === 'lifetime' && (
+                          <div className="flex items-center gap-2 text-[9px] font-bold text-yellow-600">
+                            <Sparkles className="w-3 h-3" />
+                            Never Expires ✨
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
+                <p className="text-[8px] text-gray-400 font-bold uppercase text-center tracking-widest">
+                  Verified by Mochi Authority System
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {showPrivacy && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
             <motion.div 
@@ -733,7 +887,7 @@ function StatCard({ label, value, icon: Icon, color }: any) {
   );
 }
 
-function ThemeBtn({ icon: Icon, label, active, onClick, color, isPro }: any) {
+function ThemeBtn({ icon: Icon, label, active, onClick, color, isPro, user }: any) {
   return (
     <button 
       onClick={onClick}
@@ -749,8 +903,8 @@ function ThemeBtn({ icon: Icon, label, active, onClick, color, isPro }: any) {
       )}
       <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shadow-sm", color)}><Icon className="w-5 h-5" /></div>
       <span className="text-[10px] font-bold uppercase tracking-tighter">{label}</span>
-      {isPro && (
-        <span className="text-[7px] font-black bg-yellow-400 text-white px-1.5 rounded-full absolute -top-1 left-1.5 shadow-sm">PRO</span>
+      {isPro && !isFeatureUnlocked(user, 'themes') && (
+        <span className="text-[7px] font-black bg-yellow-400 text-white px-1.5 rounded-full absolute -top-1 left-1.5 shadow-sm uppercase">PRO</span>
       )}
     </button>
   );

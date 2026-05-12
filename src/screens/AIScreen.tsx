@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage, UserProfile, ChatSession } from '../types';
+import { isFeatureUnlocked } from '../lib/premiumUtils';
 import { MochiMascot } from '../components/MochiMascot';
 import { chatWithMochiStream, generateMochiImage, generateNotes } from '../services/geminiService';
 import { cn } from '../lib/utils';
@@ -429,6 +430,21 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
                       text.toLowerCase().includes('show me a picture') ||
                       text.toLowerCase().includes('can you draw')));
     
+    // Premium Check for AI Tools
+    if (isImageGen && !isFeatureUnlocked(user, 'image_gen')) {
+      showToast("Mochi's canvas is for Full Premium users! 🎨");
+      onOpenPremium();
+      return;
+    }
+
+    if (!isImageGen && !isFeatureUnlocked(user, 'ai_tools')) {
+       // Allow limited chat? User said "unlock starter features only" for Starter.
+       // Usually AI chat is a core feature but if the user wants strict tiers:
+       showToast("Upgrade to Full Premium for advanced AI tools! 🤖");
+       onOpenPremium();
+       return;
+    }
+
     const isNoteGen = isNoteGenMode || (!isImageGen && (text && (text.toLowerCase().includes('create a note') || 
                       text.toLowerCase().includes('study note'))));
 

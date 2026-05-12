@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Sparkles, Brain, RotateCcw, Check, ChevronLeft, ChevronRight, Trash2, Edit2, Loader2, X, Download } from 'lucide-react';
 import { UserProfile, Flashcard } from '../types';
 import { generateFlashcards } from '../services/geminiService';
+import { isFeatureUnlocked } from '../lib/premiumUtils';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '../lib/utils';
 import confetti from 'canvas-confetti';
@@ -13,9 +14,10 @@ interface FlashcardsScreenProps {
   flashcards: Flashcard[];
   setFlashcards: (cards: Flashcard[] | ((prev: Flashcard[]) => Flashcard[])) => void;
   user: UserProfile;
+  onOpenPremium: () => void;
 }
 
-export default function FlashcardsScreen({ flashcards, setFlashcards, user }: FlashcardsScreenProps) {
+export default function FlashcardsScreen({ flashcards, setFlashcards, user, onOpenPremium }: FlashcardsScreenProps) {
   const [activeView, setActiveView] = useState<'list' | 'quiz'>('list');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
@@ -57,6 +59,12 @@ export default function FlashcardsScreen({ flashcards, setFlashcards, user }: Fl
 
   const handleAIAdd = async () => {
     if (!aiTopic) return;
+    
+    if (!isFeatureUnlocked(user, 'ai_tools')) {
+      onOpenPremium();
+      return;
+    }
+
     setIsLoading(true);
     try {
       const newCards = await generateFlashcards(aiTopic);

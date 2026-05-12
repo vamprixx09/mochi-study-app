@@ -12,9 +12,11 @@ export default defineConfig(({mode}) => {
         [
           process.env.GEMINI_API_KEY,
           process.env.API_KEY,
+          process.env.GOOGLE_API_KEY,
           env.GEMINI_API_KEY,
-          env.VITE_GEMINI_API_KEY
-        ].find(k => k && !['MY_GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY', 'placeholder', 'undefined', 'null'].includes(k)) || ''
+          env.VITE_GEMINI_API_KEY,
+          env.API_KEY
+        ].find(k => k && !['MY_GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY', 'placeholder', 'undefined', 'null', ''].includes(k)) || ''
       ),
     },
     resolve: {

@@ -53,7 +53,8 @@ export default function PremiumScreen({ user, onBack }: PremiumScreenProps) {
     {
       id: 'starter',
       name: 'Starter Premium',
-      price: '299 PKR',
+      price: '$2.99 USD',
+      subPrice: '399 PKR/month',
       desc: 'For aesthetic personalization',
       features: ['Frames', 'Themes', 'Aesthetic packs'],
       icon: '🍥',
@@ -63,7 +64,8 @@ export default function PremiumScreen({ user, onBack }: PremiumScreenProps) {
     {
       id: 'full',
       name: 'Full Premium',
-      price: '499 PKR',
+      price: '$5.99 USD',
+      subPrice: '799 PKR / 3 months',
       desc: 'For serious study productivity',
       features: ['Study modes', 'Flashcards', 'Templates', 'Productivity tools'],
       popular: true,
@@ -74,7 +76,8 @@ export default function PremiumScreen({ user, onBack }: PremiumScreenProps) {
     {
       id: 'lifetime',
       name: 'Lifetime',
-      price: '999 PKR',
+      price: '$49.99 USD',
+      subPrice: '4,999 PKR one-time',
       desc: 'Limited Offer',
       features: ['Everything unlocked', 'Future updates included'],
       icon: '👑',
@@ -113,7 +116,7 @@ export default function PremiumScreen({ user, onBack }: PremiumScreenProps) {
           </motion.div>
           <div className="space-y-1">
             <h1 className="text-2xl font-black font-heading tracking-tight italic">𖦁ׅ⋆:Upgrade to Premium:⋆𖦁ׅ</h1>
-            <p className="text-xs opacity-60 px-8 leading-relaxed italic">
+            <p className="text-xs font-bold text-gray-700 px-8 leading-relaxed italic">
               Support Mochi and unlock exclusive aesthetic features. One small step for you, one big snack for Mochi! 🍡
             </p>
           </div>
@@ -163,7 +166,10 @@ export default function PremiumScreen({ user, onBack }: PremiumScreenProps) {
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
-                  <div className="text-2xl font-black font-heading text-gray-900">{tier.price}</div>
+                  <div className="space-y-0.5">
+                    <div className={cn("text-[10px] font-black uppercase tracking-tighter", tier.textColor)}>{tier.price}</div>
+                    <div className="text-xl font-black font-heading text-gray-900">{(tier as any).subPrice}</div>
+                  </div>
                   <button 
                     onClick={handleUpgrade}
                     className={cn(
@@ -182,7 +188,7 @@ export default function PremiumScreen({ user, onBack }: PremiumScreenProps) {
         </div>
 
         <div className="p-6 bg-white rounded-[2.5rem] border-2 border-mochi-blue/20 flex flex-col gap-3 shadow-sm">
-           <p className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 text-mochi-blue">
+           <p className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 text-[#2D5A8E]">
              <ShieldCheck className="w-4 h-4" /> Manual Activation
            </p>
            <div className="space-y-2">
@@ -197,7 +203,7 @@ export default function PremiumScreen({ user, onBack }: PremiumScreenProps) {
 
         {/* Comparison Table */}
         <div className="space-y-4">
-           <h3 className="text-xs font-bold font-heading uppercase tracking-widest text-center opacity-30 italic px-4">Why go Premium?</h3>
+           <h3 className="text-xs font-black font-heading uppercase tracking-widest text-center text-[#2D5A8E] italic px-4">Why go Premium?</h3>
            
            <div className="grid gap-3">
              {features.map((f, i) => (
@@ -206,20 +212,20 @@ export default function PremiumScreen({ user, onBack }: PremiumScreenProps) {
                  initial={{ opacity: 0, x: -10 }}
                  animate={{ opacity: 1, x: 0 }}
                  transition={{ delay: i * 0.1 }}
-                 className="glass p-5 rounded-[2rem] flex items-center gap-4 group hover:bg-white/40 transition-colors"
+                 className="glass p-5 rounded-[2rem] flex items-center gap-4 group hover:bg-white/40 transition-colors bg-white/30"
                >
-                 <div className="p-3 bg-white rounded-2xl shadow-sm text-mochi-pink group-hover:rotate-12 transition-transform">
+                 <div className="p-3 bg-white rounded-2xl shadow-sm text-[#8E414E] group-hover:rotate-12 transition-transform">
                    <f.icon className="w-5 h-5" />
                  </div>
                  <div className="flex-1 space-y-1">
                    <div className="flex justify-between items-center">
-                     <span className="text-xs font-bold font-heading">{f.label}</span>
+                     <span className="text-xs font-black font-heading">{f.label}</span>
                      <div className="flex gap-2">
-                        <span className="text-[10px] opacity-30 strike font-mono">{f.free}</span>
-                        <span className="text-[10px] font-bold text-mochi-blue font-mono">{f.premium}</span>
+                        <span className="text-[10px] opacity-40 strike font-mono">{f.free}</span>
+                        <span className="text-[10px] font-black text-[#2D5A8E] font-mono">{f.premium}</span>
                      </div>
                    </div>
-                   <p className="text-[9px] opacity-50 leading-relaxed italic">{f.desc}</p>
+                   <p className="text-[9px] font-bold text-gray-700 leading-relaxed italic">{f.desc}</p>
                  </div>
                </motion.div>
              ))}
@@ -260,11 +266,11 @@ export default function PremiumScreen({ user, onBack }: PremiumScreenProps) {
 
         {/* Footer */}
         <div className="pt-4 flex flex-col items-center gap-4">
-          <div className="flex items-center gap-2 opacity-20">
+          <div className="flex items-center gap-2 text-mochi-blue">
              <ShieldCheck className="w-3 h-3" />
-             <span className="text-[8px] font-bold uppercase tracking-widest">Verified Payment System</span>
+             <span className="text-[8px] font-bold uppercase tracking-widest text-[#2D5A8E]">Verified Payment System</span>
           </div>
-          <p className="text-[9px] text-center opacity-40 max-w-[200px]">
+          <p className="text-[9px] text-center text-gray-500 font-bold max-w-[200px]">
              Premium status is permanent and linked to your Google account. Refunds are available if Mochi is mean to you! 🍡
           </p>
         </div>

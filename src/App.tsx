@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc, updateDoc, onSnapshot, deleteField, writeBatch } f
 import { auth, db, googleProvider, handleFirestoreError } from './lib/firebase';
 import { UserProfile, Flashcard, Task, StudyLog, ChatMessage, ChatSession, StudyPlan, OperationType, CalendarSticker, SystemConfig, LanguageImmersionData } from './types';
 import { cn } from './lib/utils';
+import { syncPremiumStatus } from './lib/premiumUtils';
 import { Loader2, LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
 import { format, isSameDay, parseISO } from 'date-fns';
 
@@ -112,6 +113,12 @@ export default function App() {
   }, [tasks, user.soundEnabled]);
 
   useEffect(() => {
+    if (user.uid && user.isPremium) {
+      syncPremiumStatus(user, setUser);
+    }
+  }, [user.uid, user.isPremium]);
+
+  useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     if (user.theme === 'night') {
@@ -139,43 +146,42 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setFirebaseUser(u);
       if (u) {
-        const userPath = `users/${u.uid}`;
-        try {
-          const userRef = doc(db, 'users', u.uid);
-          const userSnap = await getDoc(userRef);
-          
-          if (userSnap.exists()) {
-            const userData = userSnap.data() as UserProfile;
+        const userRef = doc(db, 'users', u.uid);
+        
+        // Use onSnapshot for real-time profile updates (Instant Unlock)
+        const profileUnsub = onSnapshot(userRef, async (snap) => {
+          if (snap.exists()) {
+            const userData = snap.data() as UserProfile;
             const isCreator = CREATOR_EMAILS.includes(u.email || '');
             
             if (isCreator && !userData.isPremium) {
-              await setDoc(userRef, { isPremium: true }, { merge: true });
-              userData.isPremium = true;
-            }
-            
-            // If the name is still 'Cutie' and we have a Google name, upgrade it
-            if (userData.name === 'Cutie' && u.displayName) {
-              await updateDoc(userRef, { name: u.displayName });
-              userData.name = u.displayName;
+              await updateDoc(userRef, { isPremium: true, premiumPlan: 'lifetime' });
             }
             
             setUser({ ...initialUser, ...userData, uid: u.uid, email: u.email || '' } as UserProfile);
           } else {
             const isCreator = CREATOR_EMAILS.includes(u.email || '');
-            const newUser = { 
+            const newUser: UserProfile = { 
               ...initialUser, 
               name: u.displayName || 'Cutie',
               uid: u.uid, 
               email: u.email || '', 
-              isPremium: isCreator 
+              isPremium: isCreator,
+              premiumPlan: isCreator ? 'lifetime' : 'none'
             };
             await setDoc(userRef, newUser);
             setUser(newUser);
           }
+        }, (err) => {
+          handleFirestoreError(err, OperationType.GET, `users/${u.uid}`);
+        });
 
-          // Partitioned Data Sync
-          const dataPaths = ['flashcards', 'tasks', 'studyLogs', 'plans', 'chatHistory', 'chatSessions', 'calendarStickers', 'languageImmersion'];
-          const unsubs: (() => void)[] = [];
+        // Add profile unsub to cleanups
+        const profileCleanup = () => profileUnsub();
+
+        // Partitioned Data Sync
+        const dataPaths = ['flashcards', 'tasks', 'studyLogs', 'plans', 'chatHistory', 'chatSessions', 'calendarStickers', 'languageImmersion'];
+        const unsubs: (() => void)[] = [profileCleanup];
 
           // System Config Sync
           const configUnsub = onSnapshot(doc(db, 'system', 'config'), (snap) => {
@@ -245,33 +251,29 @@ export default function App() {
           });
           unsubs.push(unsubLegacy);
 
-          // 2. Listen to partitioned documents
-          dataPaths.forEach(path => {
-            const partRef = doc(db, 'userData', u.uid, 'parts', path);
-            const unsub = onSnapshot(partRef, (doc) => {
-              if (doc.exists()) {
-                const d = doc.data();
-                if (path === 'flashcards' && d.flashcards) setFlashcards(d.flashcards);
-                if (path === 'tasks' && d.tasks) setTasks(d.tasks);
-                if (path === 'studyLogs' && d.studyLogs) setStudyLogs(d.studyLogs);
-                if (path === 'plans' && d.plans) setPlans(d.plans);
-                if (path === 'chatHistory' && d.chatHistory) setChatHistory(d.chatHistory);
-                if (path === 'chatSessions' && d.chatSessions) setChatSessions(d.chatSessions);
-                if (path === 'calendarStickers' && d.calendarStickers) setCalendarStickers(d.calendarStickers);
-                if (path === 'languageImmersion' && d.languageImmersion) setLanguageImmersion(d.languageImmersion);
-              }
-            }, (err) => {
-              handleFirestoreError(err, OperationType.GET, `userData/${u.uid}/parts/${path}`);
-            });
-            unsubs.push(unsub);
+        // 2. Listen to partitioned documents
+        dataPaths.forEach(path => {
+          const partRef = doc(db, 'userData', u.uid, 'parts', path);
+          const unsub = onSnapshot(partRef, (doc) => {
+            if (doc.exists()) {
+              const d = doc.data();
+              if (path === 'flashcards' && d.flashcards) setFlashcards(d.flashcards);
+              if (path === 'tasks' && d.tasks) setTasks(d.tasks);
+              if (path === 'studyLogs' && d.studyLogs) setStudyLogs(d.studyLogs);
+              if (path === 'plans' && d.plans) setPlans(d.plans);
+              if (path === 'chatHistory' && d.chatHistory) setChatHistory(d.chatHistory);
+              if (path === 'chatSessions' && d.chatSessions) setChatSessions(d.chatSessions);
+              if (path === 'calendarStickers' && d.calendarStickers) setCalendarStickers(d.calendarStickers);
+              if (path === 'languageImmersion' && d.languageImmersion) setLanguageImmersion(d.languageImmersion);
+            }
+          }, (err) => {
+            handleFirestoreError(err, OperationType.GET, `userData/${u.uid}/parts/${path}`);
           });
+          unsubs.push(unsub);
+        });
 
-          setLoading(false);
-          return () => unsubs.forEach(u => u());
-        } catch (err) {
-          handleFirestoreError(err, OperationType.GET, userPath);
-          setLoading(false);
-        }
+        setLoading(false);
+        return () => unsubs.forEach(u => u());
       } else {
         setLoading(false);
       }
@@ -503,13 +505,20 @@ export default function App() {
           onOpenPremium={() => setActiveTab('premium')}
         />
       );
-      case 'flashcards': return <FlashcardsScreen flashcards={flashcards} setFlashcards={(data) => {
-        setFlashcards(prev => {
-          const next = typeof data === 'function' ? (data as any)(prev) : data;
-          saveToFirebase({ flashcards: next });
-          return next;
-        });
-      }} user={user} />;
+      case 'flashcards': return (
+        <FlashcardsScreen 
+          flashcards={flashcards} 
+          setFlashcards={(data) => {
+            setFlashcards(prev => {
+              const next = typeof data === 'function' ? (data as any)(prev) : data;
+              saveToFirebase({ flashcards: next });
+              return next;
+            });
+          }} 
+          user={user} 
+          onOpenPremium={() => setActiveTab('premium')}
+        />
+      );
       case 'planner': return <PlannerScreen tasks={tasks} setTasks={(data) => {
         setTasks(prev => {
           const next = typeof data === 'function' ? (data as any)(prev) : data;
@@ -632,6 +641,15 @@ export default function App() {
           <CreatorDashboard onBack={() => setShowCreatorDashboard(false)} />
         )}
       </AnimatePresence>
+
+      {(firebaseUser?.email === 'jeeqlin2013@gmail.com' || firebaseUser?.email === 'vamprixx55@gmail.com') && (
+        <button 
+          onClick={() => setShowCreatorDashboard(true)}
+          className="fixed top-24 right-4 z-[99] w-10 h-10 glass bg-white/80 rounded-2xl flex items-center justify-center text-[#2D5A8E] shadow-xl border-2 border-[#2D5A8E]/20 hover:scale-110 active:scale-95 transition-all"
+        >
+          <ShieldCheck className="w-6 h-6" />
+        </button>
+      )}
       
       <footer className="w-full text-center py-8 opacity-40">
         <p className="text-[10px] font-medium tracking-[0.2em] uppercase italic">{systemConfig.footerCredits || '˗ˋˏ made by vamprixx ˎˊ˗'}</p>

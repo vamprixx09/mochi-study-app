@@ -19,8 +19,11 @@
         "soundEnabled": { "type": "boolean" },
         "aiVoiceEnabled": { "type": "boolean" },
         "language": { "type": "string" },
-        "customStickers": { "type": "array" }
-      },
+        "premiumPlan": { "type": "string", "enum": ["starter", "full", "lifetime", "none"] },
+        "premiumActivatedAt": { "type": "string", "format": "date-time" },
+        "premiumExpiresAt": { "type": "string", "format": "date-time" },
+        "premiumHistory": { "type": "array" },
+        "aiUsageCount": { "type": "number" },
       "required": ["uid", "name", "email"]
     },
     "UserData": {

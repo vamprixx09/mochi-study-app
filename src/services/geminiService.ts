@@ -1,31 +1,21 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { StudyPlan } from "../types";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY;
-
-// Check if the key is effectively missing or a placeholder
-const isValidKey = (key: string | undefined): boolean => {
-  if (!key) return false;
-  const k = String(key).trim();
-  // Filter out any remaining common placeholders or invalid types
-  if (['MY_GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY', 'placeholder', 'undefined', 'null', ''].includes(k)) return false;
-  return k.length >= 10;
-};
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 let ai: GoogleGenAI | null = null;
 
 function getAI(): GoogleGenAI {
   if (!ai) {
-    if (!isValidKey(GEMINI_API_KEY)) {
-      console.warn("Gemini API key validation failed. Value received:", GEMINI_API_KEY);
-      throw new Error(`Gemini API key is missing or incomplete! 🎀
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'undefined' || GEMINI_API_KEY === '') {
+      throw new Error(`Gemini API key is missing! 🎀
       
 1. Open the [Settings] menu in the top right.
 2. Select [Secrets].
-3. Add or update [GEMINI_API_KEY] with your key from AI Studio or Google Cloud.
-4. Refresh the app! ✨`);
+3. Add a secret named [GEMINI_API_KEY] with your key.
+4. Refresh the page or click 'Retry' in the preview. ✨`);
     }
-    ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY! });
+    ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
   }
   return ai;
 }

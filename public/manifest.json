@@ -1,6 +1,6 @@
 {
-  "name": "MOCHI // STUDY ⋆°｡🕊️",
-  "short_name": "MOCHI STUDY",
+  "name": "Mochi // Study ⋆°｡🕊️",
+  "short_name": "Mochi Study",
   "description": "Your aesthetic AI study companion for focus, flashcards, and fun. 🍡",
   "start_url": ".",
   "display": "standalone",
@@ -10,6 +10,12 @@
   "scope": "/",
   "id": "/",
   "icons": [
+    {
+      "src": "https://drive.google.com/uc?id=1QskuwmZXGoTYGqicXnZkj29qjA_hKKg7",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "https://drive.google.com/uc?id=1QskuwmZXGoTYGqicXnZkj29qjA_hKKg7",
       "sizes": "192x192",

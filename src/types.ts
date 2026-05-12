@@ -7,6 +7,13 @@ export enum OperationType {
   WRITE = 'write',
 }
 
+export interface PremiumHistoryEntry {
+  plan: 'starter' | 'full' | 'lifetime';
+  activatedAt: string;
+  expiresAt?: string;
+  adminEmail?: string;
+}
+
 export interface UserProfile {
   uid?: string;
   email?: string;
@@ -24,6 +31,10 @@ export interface UserProfile {
   aiVoiceEnabled?: boolean;
   customStickers?: string[];
   isPremium?: boolean;
+  premiumPlan?: 'starter' | 'full' | 'lifetime' | 'none';
+  premiumActivatedAt?: string;
+  premiumExpiresAt?: string;
+  premiumHistory?: PremiumHistoryEntry[];
   aiUsageCount?: number;
   lastAiDate?: string;
   profileFrameId?: string;

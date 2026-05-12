@@ -5,6 +5,7 @@ import {
   Palette, ShieldCheck, Heart, Star, Layout, LayoutPanelLeft
 } from 'lucide-react';
 import { UserProfile } from '../types';
+import { isFeatureUnlocked } from '../lib/premiumUtils';
 import { PROFILE_TEMPLATES, ProfileTemplate } from '../constants';
 import { cn } from '../lib/utils';
 
@@ -36,7 +37,7 @@ export default function ProfileCustomizerScreen({ user, setUser, onClose, onOpen
   };
 
   const handleApply = () => {
-    if (selectedTemplate.isPremium && !user.isPremium) {
+    if (selectedTemplate.isPremium && !isFeatureUnlocked(user, 'themes')) {
       onOpenPremium();
       return;
     }
@@ -220,7 +221,7 @@ export default function ProfileCustomizerScreen({ user, setUser, onClose, onOpen
                   key={template.id} 
                   template={template} 
                   isSelected={selectedTemplateId === template.id}
-                  isLocked={!user.isPremium}
+                  isLocked={!isFeatureUnlocked(user, 'themes')}
                   onClick={() => { setSelectedTemplateId(template.id); playSound('pop'); }}
                 />
               ))}
