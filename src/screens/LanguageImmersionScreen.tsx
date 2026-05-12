@@ -5,7 +5,7 @@ import {
   Heart, Star, Layout, LayoutPanelLeft, Flower2,
   Mic, Music, BookOpen, PenTool, Trophy, Plus,
   Download, ArrowRight, Calendar, Calculator,
-  Quote, MessageCircle, Play, Pause, Headphones
+  Quote, MessageCircle, Play, Pause, Headphones, Volume2, Info
 } from 'lucide-react';
 import { UserProfile, LanguageImmersionData } from '../types';
 import { cn } from '../lib/utils';
@@ -21,6 +21,7 @@ interface LanguageImmersionScreenProps {
 export default function LanguageImmersionScreen({ user, data, setData, onClose, onOpenPremium }: LanguageImmersionScreenProps) {
   const [newWord, setNewWord] = useState('');
   const [newMeaning, setNewMeaning] = useState('');
+  const [newPhonetic, setNewPhonetic] = useState('');
   const [activeTimer, setActiveTimer] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
 
@@ -65,15 +66,34 @@ export default function LanguageImmersionScreen({ user, data, setData, onClose, 
     audio.play().catch(e => console.log('Audio play failed', e));
   };
 
+  const handleSpeak = (text: string) => {
+    if (!window.speechSynthesis) {
+      alert("TTS not supported in this browser 🥺");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    // Try to auto-detect language or use user setting if possible
+    // For now, default is reasonable
+    utterance.rate = 0.9; // Slightly slower for clarity
+    window.speechSynthesis.speak(utterance);
+  };
+
   const handleAddWord = () => {
     if (!newWord.trim() || !newMeaning.trim()) return;
     setData(prev => ({
       ...prev,
-      vocabulary: [{ word: newWord, meaning: newMeaning, date: new Date().toISOString() }, ...prev.vocabulary],
+      vocabulary: [{ 
+        word: newWord, 
+        meaning: newMeaning, 
+        phonetic: newPhonetic.trim() || undefined,
+        date: new Date().toISOString() 
+      }, ...prev.vocabulary],
       wordsLearnedToday: prev.wordsLearnedToday + 1
     }));
     setNewWord('');
     setNewMeaning('');
+    setNewPhonetic('');
     playSound('pop');
 
     // Achievement check
@@ -184,14 +204,20 @@ export default function LanguageImmersionScreen({ user, data, setData, onClose, 
                  <input 
                     value={newWord}
                     onChange={(e) => setNewWord(e.target.value)}
-                    placeholder="🍙 new word learned..."
-                    className="flex-1 bg-white p-3 rounded-2xl text-[10px] font-bold border-none outline-none focus:ring-2 ring-pink-100 placeholder:text-[#8E414E]/40"
+                    placeholder="🍙 word..."
+                    className="flex-[2] bg-white p-3 rounded-2xl text-[10px] font-bold border-none outline-none focus:ring-2 ring-pink-100 placeholder:text-[#8E414E]/40"
+                 />
+                 <input 
+                    value={newPhonetic}
+                    onChange={(e) => setNewPhonetic(e.target.value)}
+                    placeholder="☁️ optional phonetic..."
+                    className="flex-[1.5] bg-white p-3 rounded-2xl text-[10px] font-bold border-none outline-none focus:ring-2 ring-pink-100 placeholder:text-[#8E414E]/40"
                  />
                  <input 
                     value={newMeaning}
                     onChange={(e) => setNewMeaning(e.target.value)}
                     placeholder="🍥 meaning..."
-                    className="flex-1 bg-white p-3 rounded-2xl text-[10px] font-bold border-none outline-none focus:ring-2 ring-pink-100 placeholder:text-[#8E414E]/40"
+                    className="flex-[2] bg-white p-3 rounded-2xl text-[10px] font-bold border-none outline-none focus:ring-2 ring-pink-100 placeholder:text-[#8E414E]/40"
                  />
                  <button 
                     onClick={handleAddWord}
@@ -223,6 +249,34 @@ export default function LanguageImmersionScreen({ user, data, setData, onClose, 
                     <Download className="w-3 h-3" /> export word list 📄
                  </button>
               </div>
+
+              {data.vocabulary.length > 0 && (
+                <div className="pt-4 space-y-2 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-[#8E414E]/40 mb-2">recent vocabulary 📓</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {data.vocabulary.slice(0, 20).map((v, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-white/40 rounded-2xl border border-pink-50/50 group">
+                        <div className="flex items-center gap-3">
+                          <button 
+                            onClick={() => handleSpeak(v.word)}
+                            className="w-8 h-8 flex items-center justify-center bg-white rounded-xl text-[#FFB7C5] shadow-sm hover:scale-110 active:scale-95 transition-all"
+                          >
+                            <Volume2 className="w-4 h-4" />
+                          </button>
+                          <div>
+                            <div className="text-[11px] font-black text-[#8E414E] flex items-center gap-2">
+                              {v.word}
+                              {v.phonetic && <span className="text-[9px] font-bold opacity-40">[{v.phonetic}]</span>}
+                            </div>
+                            <div className="text-[9px] font-bold text-[#8E414E]/60 italic">{v.meaning}</div>
+                          </div>
+                        </div>
+                        <div className="text-[8px] opacity-30 font-bold uppercase">{new Date(v.date).toLocaleDateString()}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
            </div>
         </section>
 
@@ -328,7 +382,13 @@ export default function LanguageImmersionScreen({ user, data, setData, onClose, 
                  <h4 className="text-[10px] font-black uppercase tracking-widest text-[#8E414E] flex items-center gap-2">
                    <Trophy className="w-3 h-3" /> Fun Rewards 🍡🍬
                  </h4>
-                 <div className="text-center p-4 glass bg-white/90 rounded-[2rem] border-white shadow-sm space-y-1">
+                 <div className="text-center p-4 glass bg-white/90 rounded-[2rem] border-white shadow-sm space-y-1 relative group">
+                    <button 
+                      onClick={() => handleSpeak(dailySnack.word)}
+                      className="absolute top-2 right-2 p-2 bg-pink-50 text-[#FFB7C5] rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-95"
+                    >
+                      <Volume2 className="w-4 h-4" />
+                    </button>
                     <p className="text-[8px] font-black opacity-60 text-[#8E414E] uppercase tracking-[0.2em]">daily language snack</p>
                     <div className="text-xl">{dailySnack.emoji}</div>
                     <div className="text-sm font-black text-[#8E414E]">{dailySnack.word}</div>

@@ -16,28 +16,46 @@ export const MochiMascot = ({ size = "md", className = "", onClick }: { size?: "
       animate={{ scale: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 20 }}
     >
-      {/* Mochi Body (CSS) */}
-      <div className="absolute inset-0 bg-white rounded-[50%_50%_40%_40%] shadow-inner flex items-center justify-center overflow-hidden border-b-4 border-gray-100">
-        {/* Blush */}
-        <div className="absolute left-2 bottom-3 w-4 h-2 bg-pink-100 rounded-full blur-[1px]"></div>
-        <div className="absolute right-2 bottom-3 w-4 h-2 bg-pink-100 rounded-full blur-[1px]"></div>
+      {/* Mochi Body */}
+      <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+        <img 
+          src="https://drive.google.com/uc?id=1QskuwmZXGoTYGqicXnZkj29qjA_hKKg7" 
+          alt="Mochi Mascot" 
+          className="w-full h-full object-contain drop-shadow-md"
+          onError={(e) => {
+            // If image fails, show CSS version
+            e.currentTarget.style.display = 'none';
+            const body = e.currentTarget.parentElement;
+            if (body) {
+              const fallback = body.querySelector('.fallback-mochi');
+              if (fallback) (fallback as HTMLElement).classList.remove('hidden');
+            }
+          }}
+        />
         
-        {/* Eyes */}
-        <div className="flex gap-4 mb-2">
-          <motion.div 
-            className="w-2 h-2 bg-gray-800 rounded-full relative"
-            animate={{ scaleY: [1, 0.1, 1] }}
-            transition={{ repeat: Infinity, duration: 3, times: [0, 0.1, 0.2] }}
-          >
-            <div className="absolute top-0.5 right-0.5 w-0.5 h-0.5 bg-white rounded-full"></div>
-          </motion.div>
-          <motion.div 
-            className="w-2 h-2 bg-gray-800 rounded-full relative"
-            animate={{ scaleY: [1, 0.1, 1] }}
-            transition={{ repeat: Infinity, duration: 3, times: [0.1, 0.2, 0.3] }}
-          >
-            <div className="absolute top-0.5 right-0.5 w-0.5 h-0.5 bg-white rounded-full"></div>
-          </motion.div>
+        {/* Fallback CSS Mochi */}
+        <div className="fallback-mochi absolute inset-0 bg-white rounded-[50%_50%_40%_40%] shadow-inner flex items-center justify-center overflow-hidden border-b-4 border-gray-100 hidden">
+          {/* Blush */}
+          <div className="absolute left-2 bottom-3 w-4 h-2 bg-pink-100 rounded-full blur-[1px]"></div>
+          <div className="absolute right-2 bottom-3 w-4 h-2 bg-pink-100 rounded-full blur-[1px]"></div>
+          
+          {/* Eyes */}
+          <div className="flex gap-4 mb-2">
+            <motion.div 
+              className="w-2 h-2 bg-gray-800 rounded-full relative"
+              animate={{ scaleY: [1, 0.1, 1] }}
+              transition={{ repeat: Infinity, duration: 3, times: [0, 0.1, 0.2] }}
+            >
+              <div className="absolute top-0.5 right-0.5 w-0.5 h-0.5 bg-white rounded-full"></div>
+            </motion.div>
+            <motion.div 
+              className="w-2 h-2 bg-gray-800 rounded-full relative"
+              animate={{ scaleY: [1, 0.1, 1] }}
+              transition={{ repeat: Infinity, duration: 3, times: [0.1, 0.2, 0.3] }}
+            >
+              <div className="absolute top-0.5 right-0.5 w-0.5 h-0.5 bg-white rounded-full"></div>
+            </motion.div>
+          </div>
         </div>
       </div>
       

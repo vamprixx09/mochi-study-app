@@ -99,7 +99,7 @@ export default function App() {
             if (Notification.permission === 'granted') {
               new Notification('Mochi Reminder 🔔', {
                 body: `Time for: ${task.text}`,
-                icon: 'https://drive.google.com/uc?export=download&id=1QskuwmZXGoTYGqicXnZkj29qjA_hKKg7'
+                icon: 'https://drive.google.com/uc?id=1QskuwmZXGoTYGqicXnZkj29qjA_hKKg7'
               });
             }
           }
@@ -483,37 +483,21 @@ export default function App() {
       case 'ai': return (
         <AIScreen 
           chatHistory={chatHistory} 
-          setChatHistory={(data) => {
-            if (typeof data === 'function') {
-              setChatHistory(prev => {
-                const next = (data as any)(prev);
-                saveToFirebase({ chatHistory: next });
-                return next;
-              });
-            } else {
-              setChatHistory(data);
-              saveToFirebase({ chatHistory: data });
-            }
-          }} 
+          setChatHistory={setChatHistory} 
           chatSessions={chatSessions}
-          setChatSessions={(data) => {
-            if (typeof data === 'function') {
-              setChatSessions(prev => {
-                const next = (data as any)(prev);
-                saveToFirebase({ chatSessions: next });
-                return next;
-              });
-            } else {
-              setChatSessions(data);
-              saveToFirebase({ chatSessions: data });
-            }
-          }}
+          setChatSessions={setChatSessions}
           user={user}
           setUser={(data) => {
             setUser(prev => {
               const next = typeof data === 'function' ? (data as any)(prev) : data;
               saveUserToFirebase(next);
               return next;
+            });
+          }}
+          syncChatToCloud={(history, sessions) => {
+            saveToFirebase({ 
+              chatHistory: history || chatHistory, 
+              chatSessions: sessions || chatSessions 
             });
           }}
           onOpenPremium={() => setActiveTab('premium')}

@@ -4,7 +4,7 @@ import {
   Send, Image as ImageIcon, Sparkles, Brain, Clock, Heart, Loader2, 
   Phone, Mic, FileText, XCircle, Paperclip, User, Download, 
   History, PlusCircle, Volume2, Trash2, Copy, Pencil, RotateCcw, Check, CheckCircle,
-  VolumeX, Coffee
+  VolumeX, Coffee, AlertCircle, Info
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage, UserProfile, ChatSession } from '../types';
@@ -27,10 +27,11 @@ interface AIScreenProps {
   setChatSessions: (sessions: ChatSession[] | ((prev: ChatSession[]) => ChatSession[])) => void;
   user: UserProfile;
   setUser: (user: UserProfile | ((prev: UserProfile) => UserProfile)) => void;
+  syncChatToCloud: (history?: ChatMessage[], sessions?: ChatSession[]) => void;
   onOpenPremium: () => void;
 }
 
-export default function AIScreen({ chatHistory, setChatHistory, chatSessions, setChatSessions, user, setUser, onOpenPremium }: AIScreenProps) {
+export default function AIScreen({ chatHistory, setChatHistory, chatSessions, setChatSessions, user, setUser, syncChatToCloud, onOpenPremium }: AIScreenProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [image, setImage] = useState<string | null>(null);
@@ -56,6 +57,7 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
   const [toast, setToast] = useState<string | null>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [isSTTSupported, setIsSTTSupported] = useState(false);
+  const [micPermissionState, setMicPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,6 +66,16 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
   const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
+    // Check for permissions status if supported
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'microphone' as any }).then(result => {
+        setMicPermissionState(result.state);
+        result.onchange = () => {
+          setMicPermissionState(result.state);
+        };
+      }).catch(e => console.log('Permission query not supported', e));
+    }
+
     // Check for STT support
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -95,6 +107,10 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
 
   const handleStartRecording = async () => {
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Recording not supported in this browser 🥺");
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
@@ -118,11 +134,19 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
 
       recorder.start();
       setIsRecording(true);
+      setMicPermissionState('granted');
       showToast("Recording voice mail... 🎤");
       playSound('pop');
     } catch (err) {
       console.error("Failed to start recording:", err);
-      showToast("Mic blocked! 🥺 Please allow microphone access in browser settings to send voice mails.");
+      setMicPermissionState('denied');
+      
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      if (errorMsg.includes('Permission denied') || errorMsg.includes('NotAllowedError')) {
+        showToast("Mic blocked! 🚫 Try checking browser settings or opening in a new tab.");
+      } else {
+        showToast(`Recording error: ${errorMsg} 🥺`);
+      }
     }
   };
 
@@ -268,7 +292,9 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
     setChatSessions(prev => {
       const filtered = prev.filter(s => s.id !== currentSessionId);
       const updated = [newSession, ...filtered];
-      return updated.slice(0, 50); // Limit to 50 sessions
+      const sliced = updated.slice(0, 50); // Limit to 50 sessions
+      syncChatToCloud(chatHistory, sliced);
+      return sliced;
     });
   };
 
@@ -354,7 +380,7 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
     
     showToast('Regenerating response... 🎀');
     playSound('pop');
-    handleSend(lastUserMessage, lastUserImg, lastUserAudio);
+    handleSend(lastUserMessage, lastUserImg, lastUserAudio, newHistory);
   };
 
   const handleQuickAction = (action: string) => {
@@ -380,8 +406,15 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
     }
   }, [chatHistory, isLoading, shouldAutoScroll]);
 
-  const handleSend = async (text: string = input, img: string | null = image, audio: string | null = audioBase64) => {
+  const handleSend = async (
+    text: string = input, 
+    img: string | null = image, 
+    audio: string | null = audioBase64,
+    historyOverride?: ChatMessage[]
+  ) => {
     if (!text && !img && !attachedFile && !audio) return;
+
+    const currentHistory = historyOverride || chatHistory;
 
     // Check for special commands
     const isImageGen = isImageGenMode ||
@@ -436,7 +469,11 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
           timestamp: new Date().toISOString(),
           imageUrl: generatedImg
         };
-        setChatHistory(prev => [...prev, mochiMessage]);
+        setChatHistory(prev => {
+          const next = [...prev, mochiMessage];
+          syncChatToCloud(next);
+          return next;
+        });
         playSound('sparkle');
       } else if (isNoteGen) {
         const notes = await generateNotes(text!);
@@ -447,17 +484,22 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
           content: finalContent,
           timestamp: new Date().toISOString()
         };
-        setChatHistory(prev => [...prev, mochiMessage]);
+        setChatHistory(prev => {
+          const next = [...prev, mochiMessage];
+          syncChatToCloud(next);
+          return next;
+        });
         playSound('sparkle');
       } else {
-        const historyForApi = chatHistory.map(c => ({
+        const historyForApi = currentHistory.map(c => ({
           role: c.role as 'user' | 'model',
           parts: [{ text: c.content }]
         }));
 
         // Create initial empty message for streaming
         const timestamp = new Date().toISOString();
-        setChatHistory(prev => [...prev, { role: 'model', content: '', timestamp }]);
+        const initialModelMsg: ChatMessage = { role: 'model', content: '', timestamp };
+        setChatHistory(prev => [...prev, initialModelMsg]);
 
         finalContent = await chatWithMochiStream(
           promptWithFile, 
@@ -477,6 +519,11 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
         ) || t('mochi_sleepy');
         
         playSound('sparkle');
+        // Final sync when streaming is done
+        setChatHistory(prev => {
+          syncChatToCloud(prev);
+          return prev;
+        });
       }
     } catch (error) {
       console.error(error);
@@ -974,6 +1021,28 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
             <FileText className="w-3 h-3 text-mochi-mint" />
             <span className="text-[10px] font-bold text-mochi-mint truncate max-w-[100px]">{attachedFile.name}</span>
             <button onClick={() => setAttachedFile(null)}><XCircle className="w-3 h-3 text-mochi-mint" /></button>
+          </div>
+        )}
+        
+        {micPermissionState === 'denied' && (
+          <div className="flex flex-col gap-1 mb-2">
+            <button 
+              onClick={() => handleStartRecording()}
+              className="flex items-center gap-2 px-4 py-1.5 bg-red-50 text-red-500 rounded-full w-fit border border-red-200 hover:bg-red-100 transition-all shadow-sm"
+            >
+              <AlertCircle className="w-3 h-3" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Mic Blocked! Tap here to try again 🎤</span>
+            </button>
+            <p className="text-[9px] text-gray-400 ml-4 italic flex flex-col gap-0.5">
+              <span className="flex items-center gap-1">
+                <Sparkles className="w-2 h-2" /> 
+                Click the LOCK icon in your URL bar to Allow Mic 🎀
+              </span>
+              <span className="flex items-center gap-1 opacity-70">
+                <Info className="w-2 h-2" /> 
+                Still stuck? Try opening the app in a **New Tab** ↗️
+              </span>
+            </p>
           </div>
         )}
         

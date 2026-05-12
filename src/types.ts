@@ -33,6 +33,7 @@ export interface UserProfile {
 export interface LanguageWord {
   word: string;
   meaning: string;
+  phonetic?: string;
   date: string;
 }
 
