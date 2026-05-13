@@ -1,3 +1,5 @@
+// Mochi App Entry Point 🍡
+// v1.0.2 - Force reload
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
