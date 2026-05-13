@@ -80,6 +80,14 @@ export interface SubTask {
   completed: boolean;
 }
 
+export interface Habit {
+  id: string;
+  text: string;
+  completedDates: string[]; // ISO dates
+  createdAt: string;
+  isDefault?: boolean;
+}
+
 export interface Task {
   id: string;
   text: string;

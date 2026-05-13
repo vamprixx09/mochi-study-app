@@ -1,19 +1,25 @@
-import { Type } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { StudyPlan } from "../types";
 
+// Standard initialization for React (Vite) as per gemini-api skill
+const getAI = () => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey.length < 10) {
+    // If the key is missing or is the default placeholder, provide a clear instruction.
+    // The library will throw an error if we try to use it with a bad key anyway.
+  }
+  return new GoogleGenAI({ apiKey: apiKey! });
+};
+
 async function callMochiAI(model: string, contents: any, config?: any) {
-  const response = await fetch("/api/gemini", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model, contents, config })
+  const ai = getAI();
+  const response = await ai.models.generateContent({
+    model,
+    contents: Array.isArray(contents) ? contents : [{ role: 'user', parts: [{ text: String(contents) }] }],
+    config
   });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: "Mochi is feeling a bit tired. 🍡" }));
-    throw new Error(errorData.error || "Mochi is having trouble right now. 🍡");
-  }
-
-  return await response.json();
+  return response;
 }
 
 export async function chatWithMochiStream(
@@ -65,6 +71,9 @@ export async function chatWithMochiStream(
     return fullText;
   } catch (error: any) {
     console.error("Gemini Content Generation Failed:", error);
+    if (error.message?.includes("API key not valid") || error.message?.includes("INVALID_ARGUMENT") || error.status === "INVALID_ARGUMENT") {
+      throw new Error("The Gemini API key is not valid. 🎀 Please check the Secrets panel in AI Studio Settings.");
+    }
     throw error;
   }
 }
@@ -149,7 +158,7 @@ export async function generateMochiImage(prompt: string, imageBase64?: string): 
   const response = await callMochiAI(model, { parts });
 
   // Find the image part in the response
-  for (const part of (response as any).candidates?.[0]?.content?.parts || []) {
+  for (const part of response.candidates?.[0]?.content?.parts || []) {
     if (part.inlineData) {
       return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
     }
@@ -180,6 +189,7 @@ export async function generateExamPrep(subject: string): Promise<any> {
 }
 
 export async function generateNotes(topic: string): Promise<string> {
-  const response = await callMochiAI("gemini-3-flash-preview", `Write structured study notes for: ${topic}. Use Markdown.`);
+  const model = "gemini-3-flash-preview";
+  const response = await callMochiAI(model, `Write structured study notes for: ${topic}. Use Markdown.`);
   return response.text || "";
 }

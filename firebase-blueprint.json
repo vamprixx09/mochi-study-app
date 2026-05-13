@@ -36,7 +36,9 @@
         "studyLogs": { "type": "array" },
         "plans": { "type": "array" },
         "chatHistory": { "type": "array" },
-        "calendarStickers": { "type": "array" }
+        "calendarStickers": { "type": "array" },
+        "habits": { "type": "array" },
+        "languageImmersion": { "type": "object" }
       }
     },
     "SystemConfig": {

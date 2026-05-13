@@ -5,7 +5,7 @@ import {
   RotateCcw, Check, Trash2, Loader2, Save, ChevronLeft, ChevronRight, 
   X, Bell, BellOff, Sticker, Clock, Edit2, Crown, Sparkles
 } from 'lucide-react';
-import { Task, StudyPlan, StudyLog, UserProfile, SubTask, CalendarSticker, LanguageImmersionData } from '../types';
+import { Task, StudyPlan, StudyLog, UserProfile, SubTask, CalendarSticker, LanguageImmersionData, Habit } from '../types';
 import { generateStudyPlan, generateExamPrep } from '../services/geminiService';
 import { isFeatureUnlocked } from '../lib/premiumUtils';
 import { v4 as uuidv4 } from 'uuid';
@@ -35,6 +35,8 @@ interface PlannerScreenProps {
   onOpenPremium: () => void;
   languageImmersion: LanguageImmersionData;
   setLanguageImmersion: (data: LanguageImmersionData | ((prev: LanguageImmersionData) => LanguageImmersionData)) => void;
+  habits: Habit[];
+  setHabits: (habits: Habit[] | ((prev: Habit[]) => Habit[])) => void;
 }
 
 const DEFAULT_STICKERS = [
@@ -47,15 +49,28 @@ const PRO_STICKERS = [
 ];
 
 export default function PlannerScreen({ 
-  tasks, setTasks, plans, setPlans, studyLogs, setStudyLogs, user, setUser, calendarStickers, setCalendarStickers, onOpenPremium, languageImmersion, setLanguageImmersion 
+  tasks, setTasks, plans, setPlans, studyLogs, setStudyLogs, user, setUser, calendarStickers, setCalendarStickers, onOpenPremium, languageImmersion, setLanguageImmersion, habits, setHabits 
 }: PlannerScreenProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'timer' | 'planner' | 'tasks' | 'calendar' | 'music'>('timer');
+  const [activeSubTab, setActiveSubTab] = useState<'timer' | 'planner' | 'tasks' | 'calendar' | 'music' | 'habits'>('timer');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showDayModal, setShowDayModal] = useState(false);
   const [newTaskText, setNewTaskText] = useState('');
   const [newReminderTime, setNewReminderTime] = useState('');
   const [customEmoji, setCustomEmoji] = useState('');
+  const [newHabitText, setNewHabitText] = useState('');
+
+  // Initial habits
+  useEffect(() => {
+    if (habits.length === 0) {
+      const defaultHabits: Habit[] = [
+        { id: uuidv4(), text: 'Listen to 30 mins of music/podcast 🎧', completedDates: [], createdAt: new Date().toISOString(), isDefault: true },
+        { id: uuidv4(), text: 'Read 10 pages 📖', completedDates: [], createdAt: new Date().toISOString(), isDefault: true },
+        { id: uuidv4(), text: 'Write 5 sentences ✍️', completedDates: [], createdAt: new Date().toISOString(), isDefault: true }
+      ];
+      setHabits(defaultHabits);
+    }
+  }, [habits.length]);
   
   const allStickersPalette = [...DEFAULT_STICKERS];
   const proStickersPalette = [...PRO_STICKERS, ...(user.customStickers || [])];
@@ -126,11 +141,6 @@ export default function PlannerScreen({
 
   const applyTemplate = (template: typeof PREMIUM_TEMPLATES[0]) => {
     if (!user.isPremium) {
-      onOpenPremium();
-      return;
-    }
-    
-    if (template.id === 'template_exam' && !isFeatureUnlocked(user, 'ai_tools')) {
       onOpenPremium();
       return;
     }
@@ -324,6 +334,37 @@ export default function PlannerScreen({
     }));
   };
 
+  const toggleHabit = (habitId: string) => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    setHabits(prev => prev.map(h => {
+      if (h.id === habitId) {
+        const completedDates = [...h.completedDates];
+        const index = completedDates.indexOf(today);
+        if (index > -1) {
+          completedDates.splice(index, 1);
+        } else {
+          completedDates.push(today);
+          playSound('check');
+        }
+        return { ...h, completedDates };
+      }
+      return h;
+    }));
+  };
+
+  const addHabit = () => {
+    if (!newHabitText.trim()) return;
+    const newHabit: Habit = {
+      id: uuidv4(),
+      text: newHabitText,
+      completedDates: [],
+      createdAt: new Date().toISOString()
+    };
+    setHabits(prev => [...prev, newHabit]);
+    setNewHabitText('');
+    playSound('pop');
+  };
+
   const addDaySticker = (date: string, emoji: string) => {
     const newSticker: CalendarSticker = {
       id: uuidv4(),
@@ -434,7 +475,8 @@ export default function PlannerScreen({
           { id: 'timer', label: t('timer'), icon: Timer },
           { id: 'calendar', label: t('calendar'), icon: CalendarIcon },
           { id: 'planner', label: t('ai_plan'), icon: Wand2 },
-          { id: 'tasks', label: t('tasks'), icon: ListTodo }
+          { id: 'tasks', label: t('tasks'), icon: ListTodo },
+          { id: 'habits', label: 'Habits', icon: Trophy }
         ].map(tab => {
           const Icon = tab.icon as any;
           return (
@@ -504,26 +546,8 @@ export default function PlannerScreen({
 
         {activeSubTab === 'planner' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-            {!isFeatureUnlocked(user, 'ai_tools') ? (
-              <div className="glass p-12 rounded-[3.5rem] text-center space-y-6 bg-gradient-to-br from-yellow-50 via-white to-pink-50 border border-yellow-100 shadow-xl relative overflow-hidden group">
-                <div className="absolute top-4 right-6 p-2 bg-yellow-400 text-white rounded-full"><Crown className="w-4 h-4" /></div>
-                <div className="w-20 h-20 bg-white rounded-full mx-auto flex items-center justify-center text-4xl shadow-md group-hover:rotate-12 transition-transform">🧠</div>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold font-heading italic">AI Analysis Required</h3>
-                  <p className="text-xs opacity-60 leading-relaxed px-6 italic">
-                    AI-powered study plans and exam preparation require Mochi Pro. Upgrade to unlock advanced study tools! 🍡
-                  </p>
-                </div>
-                <button 
-                  onClick={onOpenPremium}
-                  className="w-full py-4 bg-mochi-pink text-white rounded-3xl font-bold font-heading text-[10px] uppercase tracking-widest shadow-lg shadow-pink-200 active:scale-95 transition-all"
-                >
-                  Unlock Mochi Pro
-                </button>
-              </div>
-            ) : (
-              <div className="glass p-6 rounded-[2.5rem] space-y-4">
-                <h3 className="text-lg font-bold font-heading flex items-center gap-2"><Wand2 className="w-5 h-5 text-mochi-lavender" /> {t('ai_plan')}</h3>
+            <div className="glass p-6 rounded-[2.5rem] space-y-4">
+              <h3 className="text-lg font-bold font-heading flex items-center gap-2"><Wand2 className="w-5 h-5 text-mochi-lavender" /> {t('ai_plan')}</h3>
                 <div className="space-y-3">
                   <input value={planSubject} onChange={(e) => setPlanSubject(e.target.value)} placeholder={t('subject_placeholder')} className="w-full p-4 bg-white/40 rounded-2xl text-sm" />
                   <input type="date" value={planExamDate} onChange={(e) => setPlanExamDate(e.target.value)} className="w-full p-4 bg-white/40 rounded-2xl text-sm" />
@@ -538,8 +562,7 @@ export default function PlannerScreen({
 
                 <div className="pt-4 border-t border-white/20 mt-4 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-widest opacity-40">Premium Templates 👑</h4>
-                    <span className="text-[8px] bg-yellow-400 text-white px-2 py-0.5 rounded-full font-bold">PRO</span>
+                    <h4 className="text-xs font-bold uppercase tracking-widest opacity-40">Quick Templates 🍡</h4>
                   </div>
                   <div className="grid grid-cols-1 gap-3">
                     {PREMIUM_TEMPLATES.map(template => (
@@ -564,7 +587,6 @@ export default function PlannerScreen({
                   </div>
                 </div>
               </div>
-            )}
           </motion.div>
         )}
 
@@ -586,7 +608,6 @@ export default function PlannerScreen({
                   className="shrink-0 p-3 glass rounded-2xl flex items-center gap-2 border border-white/40 hover:scale-105 transition-all group outline-none"
                 >
                   <span className="text-[10px] font-bold opacity-60 group-hover:opacity-100 transition-all">{template.name}</span>
-                  {!user.isPremium && <Crown className="w-2.5 h-2.5 text-yellow-500" />}
                 </button>
               ))}
             </div>
@@ -596,52 +617,129 @@ export default function PlannerScreen({
               <button onClick={() => addTask()} className="p-3 bg-mochi-pink text-white rounded-2xl shadow-md"><Plus className="w-5 h-5" /></button>
             </div>
             <div className="space-y-3">
-              {tasks.filter(t => !t.sticker).map(task => (
-                <div key={task.id} className="glass p-4 rounded-3xl space-y-3 group">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => toggleTask(task.id)} className={cn("w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all", task.completed ? "bg-mochi-pink border-mochi-pink text-white" : "border-gray-200")}>
-                        <AnimatePresence>
-                          {task.completed && (
-                            <motion.div
-                              initial={{ scale: 0, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              exit={{ scale: 0, opacity: 0 }}
-                              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                            >
-                              <Check className="w-4 h-4" />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </button>
-                      <div className="flex flex-col">
-                        <span className={cn("text-sm font-medium", task.completed && "line-through opacity-40")}>{task.text}</span>
-                        <span className="text-[9px] opacity-40 italic">{format(parseISO(task.date), 'MMM d, yyyy')} {task.reminderTime && `• 🔔 ${task.reminderTime}`}</span>
+              {tasks.filter(t => !t.sticker).map(task => {
+                const subtasks = task.subtasks || [];
+                const totalSubtasks = subtasks.length;
+                const completedSubtasks = subtasks.filter(s => s.completed).length;
+                const progress = totalSubtasks > 0 ? (completedSubtasks / totalSubtasks) * 100 : 0;
+
+                return (
+                  <div key={task.id} className="glass p-4 rounded-3xl space-y-3 group bg-white/30 hover:bg-white/50 transition-all border-white/40 shadow-sm relative overflow-hidden">
+                    {progress > 0 && progress < 100 && (
+                      <div className="absolute bottom-0 left-0 h-1 bg-mochi-blue/20 w-full">
+                        <div className="h-full bg-mochi-blue" style={{ width: `${progress}%` }} />
                       </div>
-                    </div>
-                    <button onClick={() => setTasks(prev => prev.filter(t => t.id !== task.id))} className="text-red-200 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></button>
-                  </div>
-                  {/* Subtasks */}
-                  <div className="pl-9 space-y-2">
-                    {task.subtasks?.map(st => (
-                      <div key={st.id} className="flex items-center gap-2">
-                        <button onClick={() => toggleSubtask(task.id, st.id)} className={cn("w-4 h-4 rounded border flex items-center justify-center", st.completed ? "bg-mochi-mint border-mochi-mint text-white" : "border-gray-200")}>
-                          {st.completed && <Check className="w-2 h-2" />}
+                    )}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => toggleTask(task.id)} className={cn("w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all", task.completed ? "bg-mochi-pink border-mochi-pink text-white" : "border-gray-200")}>
+                          <AnimatePresence>
+                            {task.completed && (
+                              <motion.div
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                              >
+                                <Check className="w-4 h-4" />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </button>
-                        <span className={cn("text-xs", st.completed && "line-through opacity-40")}>{st.text}</span>
+                        <div className="flex flex-col">
+                          <span className={cn("text-sm font-medium", task.completed && "line-through opacity-40")}>{task.text}</span>
+                          <span className="text-[9px] opacity-40 italic flex items-center gap-1">
+                            {format(parseISO(task.date), 'MMM d')} 
+                            {task.reminderTime && (
+                              <span className="flex items-center gap-0.5 text-mochi-lavender font-bold">
+                                • <Bell className="w-2 h-2" /> {task.reminderTime}
+                              </span>
+                            )}
+                            {totalSubtasks > 0 && ` • 🍡 ${completedSubtasks}/${totalSubtasks}`}
+                          </span>
+                        </div>
                       </div>
-                    ))}
-                    <div className="flex items-center gap-2 pt-1">
-                      <Plus className="w-3 h-3 opacity-30" />
-                      <input 
-                        onKeyPress={(e) => { if(e.key === 'Enter') { addSubtask(task.id, (e.target as HTMLInputElement).value); (e.target as HTMLInputElement).value = ''; } }} 
-                        placeholder={t('add_subtask')} 
-                        className="text-xs bg-transparent border-none outline-none w-full opacity-40 focus:opacity-100 italic" 
-                      />
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setTasks(prev => prev.filter(t => t.id !== task.id))} className="p-1 text-red-200 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+                    {/* Subtasks */}
+                    <div className="pl-9 space-y-2">
+                      {subtasks.map(st => (
+                        <div key={st.id} className="flex items-center gap-2 group/sub">
+                          <button onClick={() => toggleSubtask(task.id, st.id)} className={cn("w-4 h-4 rounded border flex items-center justify-center transition-all", st.completed ? "bg-mochi-mint border-mochi-mint text-white" : "border-gray-200 bg-white/40")}>
+                            {st.completed && <Check className="w-2 h-2" />}
+                          </button>
+                          <span className={cn("text-xs", st.completed && "line-through opacity-40")}>{st.text}</span>
+                          <button onClick={() => {
+                            setTasks(prev => prev.map(t => t.id === task.id ? { ...t, subtasks: t.subtasks?.filter(s => s.id !== st.id) } : t))
+                          }} className="text-red-100 opacity-0 group-hover/sub:opacity-100 transition-opacity">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                      <div className="flex items-center gap-2 pt-1">
+                        <div className="w-4 h-4 flex items-center justify-center opacity-30"><Plus className="w-3 h-3" /></div>
+                        <input 
+                          onKeyPress={(e) => { 
+                            if(e.key === 'Enter') { 
+                              addSubtask(task.id, (e.target as HTMLInputElement).value); 
+                              (e.target as HTMLInputElement).value = ''; 
+                            } 
+                          }} 
+                          placeholder={t('add_subtask')} 
+                          className="text-[10px] bg-transparent border-none outline-none w-full opacity-40 focus:opacity-100 italic font-medium" 
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
+        {activeSubTab === 'habits' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+            <div className="glass p-6 rounded-[2.5rem] space-y-4">
+              <h3 className="text-lg font-bold font-heading flex items-center gap-2"><Trophy className="w-5 h-5 text-yellow-500" /> Daily Habits</h3>
+              <div className="flex p-2 glass rounded-2xl bg-white/40">
+                <input 
+                  value={newHabitText} 
+                  onChange={(e) => setNewHabitText(e.target.value)} 
+                  onKeyPress={(e) => e.key === 'Enter' && addHabit()}
+                  placeholder="New habit... 🍡" 
+                  className="flex-1 bg-transparent border-none outline-none text-sm px-4" 
+                />
+                <button onClick={addHabit} className="p-2 bg-mochi-pink text-white rounded-xl shadow-md"><Plus className="w-4 h-4" /></button>
+              </div>
+              
+              <div className="space-y-3 pt-2">
+                {habits.map(habit => {
+                  const today = format(new Date(), 'yyyy-MM-dd');
+                  const isDoneToday = habit.completedDates.includes(today);
+                  return (
+                    <div key={habit.id} className="glass p-4 rounded-3xl flex items-center justify-between group bg-white/30 border-white/40 shadow-sm transition-all hover:bg-white/50">
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => toggleHabit(habit.id)}
+                          className={cn(
+                            "w-8 h-8 rounded-2xl flex items-center justify-center transition-all shadow-inner",
+                            isDoneToday ? "bg-mochi-mint text-white scale-110" : "bg-white/40 text-gray-300"
+                          )}
+                        >
+                          <Check className={cn("w-5 h-5 transition-transform", isDoneToday ? "scale-100" : "scale-0")} />
+                        </button>
+                        <div className="flex flex-col">
+                          <span className={cn("text-sm font-bold", isDoneToday && "opacity-40 line-through")}>{habit.text}</span>
+                          <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-40">Streak: {habit.completedDates.length} Days 🔥</span>
+                        </div>
+                      </div>
+                      <button onClick={() => setHabits(prev => prev.filter(h => h.id !== habit.id))} className="p-2 text-red-200 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </motion.div>
         )}

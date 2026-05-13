@@ -4,7 +4,7 @@ import { Navigation } from './components/Navigation';
 import { onAuthStateChanged, User as FirebaseUser, signInWithPopup, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, deleteField, writeBatch } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError } from './lib/firebase';
-import { UserProfile, Flashcard, Task, StudyLog, ChatMessage, ChatSession, StudyPlan, OperationType, CalendarSticker, SystemConfig, LanguageImmersionData } from './types';
+import { UserProfile, Flashcard, Task, StudyLog, ChatMessage, ChatSession, StudyPlan, OperationType, CalendarSticker, SystemConfig, LanguageImmersionData, Habit } from './types';
 import { cn } from './lib/utils';
 import { syncPremiumStatus } from './lib/premiumUtils';
 import { Loader2, LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
@@ -47,6 +47,7 @@ export default function App() {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [plans, setPlans] = useState<StudyPlan[]>([]);
   const [calendarStickers, setCalendarStickers] = useState<CalendarSticker[]>([]);
+  const [habits, setHabits] = useState<Habit[]>([]);
   const [languageImmersion, setLanguageImmersion] = useState<LanguageImmersionData>({
     streak: 0,
     lastActive: null,
@@ -180,7 +181,7 @@ export default function App() {
         const profileCleanup = () => profileUnsub();
 
         // Partitioned Data Sync
-        const dataPaths = ['flashcards', 'tasks', 'studyLogs', 'plans', 'chatHistory', 'chatSessions', 'calendarStickers', 'languageImmersion'];
+        const dataPaths = ['flashcards', 'tasks', 'studyLogs', 'plans', 'chatHistory', 'chatSessions', 'calendarStickers', 'languageImmersion', 'habits'];
         const unsubs: (() => void)[] = [profileCleanup];
 
           // System Config Sync
@@ -236,6 +237,7 @@ export default function App() {
                   if (path === 'chatHistory') setChatHistory(val);
                   if (path === 'chatSessions') setChatSessions(val);
                   if (path === 'languageImmersion') setLanguageImmersion(val);
+                  if (path === 'habits') setHabits(val);
                 }
               });
 
@@ -265,6 +267,7 @@ export default function App() {
               if (path === 'chatSessions' && d.chatSessions) setChatSessions(d.chatSessions);
               if (path === 'calendarStickers' && d.calendarStickers) setCalendarStickers(d.calendarStickers);
               if (path === 'languageImmersion' && d.languageImmersion) setLanguageImmersion(d.languageImmersion);
+              if (path === 'habits' && d.habits) setHabits(d.habits);
             }
           }, (err) => {
             handleFirestoreError(err, OperationType.GET, `userData/${u.uid}/parts/${path}`);
@@ -310,7 +313,7 @@ export default function App() {
         let hasChanges = false;
 
         // Route data to correct partitioned documents
-        ['flashcards', 'tasks', 'studyLogs', 'plans', 'chatHistory', 'chatSessions', 'calendarStickers', 'languageImmersion'].forEach(path => {
+        ['flashcards', 'tasks', 'studyLogs', 'plans', 'chatHistory', 'chatSessions', 'calendarStickers', 'languageImmersion', 'habits'].forEach(path => {
           if (data[path]) {
             let sanitized = sanitizeData(data[path]);
             
@@ -547,6 +550,12 @@ export default function App() {
         setCalendarStickers(prev => {
           const next = typeof data === 'function' ? (data as any)(prev) : data;
           saveToFirebase({ calendarStickers: next });
+          return next;
+        });
+      }} habits={habits} setHabits={(data) => {
+        setHabits(prev => {
+          const next = typeof data === 'function' ? (data as any)(prev) : data;
+          saveToFirebase({ habits: next });
           return next;
         });
       }} onOpenPremium={() => setActiveTab('premium')} languageImmersion={languageImmersion} setLanguageImmersion={(data) => {

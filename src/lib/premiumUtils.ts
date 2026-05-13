@@ -59,6 +59,9 @@ export function calculateExpiryDate(plan: 'starter' | 'full' | 'lifetime'): stri
 export type PremiumFeature = 'ai_tools' | 'themes' | 'templates' | 'notes' | 'image_gen' | 'stickers';
 
 export const isFeatureUnlocked = (user: UserProfile, feature: PremiumFeature): boolean => {
+  // AI tools and Image generation are now free for everyone 🎀
+  if (feature === 'ai_tools' || feature === 'image_gen') return true;
+
   if (!user.isPremium) return false;
   
   // Lifetime and Full unlock everything
