@@ -80,7 +80,7 @@ export default function FlashcardsScreen({ flashcards, setFlashcards, user, onOp
       setAiTopic('');
     } catch (error) {
       console.error(error);
-      alert("Failed to generate flashcards. Check your API key! 🎀");
+      alert("Failed to generate flashcards. Mochi is having a little trouble thinking... 🥺");
     } finally {
       setIsLoading(false);
     }

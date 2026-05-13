@@ -241,7 +241,7 @@ export default function PlannerScreen({
       setGeneratedPlan(plan);
     } catch (error) {
       console.error(error);
-      alert("Failed to generate plan. Check your API key! 🎀");
+      alert("Failed to generate plan. Mochi might be a bit sleepy... 🥺");
     } finally {
       setIsGenerating(false);
     }

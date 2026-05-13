@@ -1,8 +1,20 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { StudyPlan } from "../types";
 
-// Initialize Gemini directly in the frontend
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+async function callMochiAI(model: string, contents: any, config?: any) {
+  const response = await fetch("/api/gemini", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, contents, config })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: "Mochi is feeling a bit tired. 🍡" }));
+    throw new Error(errorData.error || "Mochi is having trouble right now. 🍡");
+  }
+
+  return await response.json();
+}
 
 export async function chatWithMochiStream(
   message: string, 
@@ -47,20 +59,12 @@ export async function chatWithMochiStream(
   contents.push({ role: 'user', parts: userParts });
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents,
-      config: { systemInstruction }
-    });
-
+    const response = await callMochiAI(model, contents, { systemInstruction });
     const fullText = response.text || "";
     onChunk(fullText);
     return fullText;
   } catch (error: any) {
     console.error("Gemini Content Generation Failed:", error);
-    if (error.message?.includes("API key not valid") || error.message?.includes("PERMISSION_DENIED")) {
-      throw new Error("Mochi's magic needs a valid API key! 🎀 Please check Settings > Secrets in AI Studio.");
-    }
     throw error;
   }
 }
@@ -74,32 +78,28 @@ export async function generateStudyPlan(subject: string, examDate: string, avail
   - days: an array of daily tasks with 'day' (number), 'focus' (topic), 'tasks' (array of strings), 'minutes' (number)
   - tips: an array of 3-5 study tips.`;
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          summary: { type: Type.STRING },
-          days: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                day: { type: Type.INTEGER },
-                focus: { type: Type.STRING },
-                tasks: { type: Type.ARRAY, items: { type: Type.STRING } },
-                minutes: { type: Type.INTEGER }
-              },
-              required: ["day", "focus", "tasks", "minutes"]
-            }
-          },
-          tips: { type: Type.ARRAY, items: { type: Type.STRING } }
+  const response = await callMochiAI(model, prompt, {
+    responseMimeType: "application/json",
+    responseSchema: {
+      type: Type.OBJECT,
+      properties: {
+        summary: { type: Type.STRING },
+        days: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              day: { type: Type.INTEGER },
+              focus: { type: Type.STRING },
+              tasks: { type: Type.ARRAY, items: { type: Type.STRING } },
+              minutes: { type: Type.INTEGER }
+            },
+            required: ["day", "focus", "tasks", "minutes"]
+          }
         },
-        required: ["summary", "days", "tips"]
-      }
+        tips: { type: Type.ARRAY, items: { type: Type.STRING } }
+      },
+      required: ["summary", "days", "tips"]
     }
   });
 
@@ -111,21 +111,17 @@ export async function generateFlashcards(textOrTopic: string): Promise<{ front: 
   const prompt = `Generate 5-10 high-quality study flashcards based on this topic or text: "${textOrTopic}".
   Return a JSON array of objects with 'front' (question/term) and 'back' (answer/definition).`;
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            front: { type: Type.STRING },
-            back: { type: Type.STRING }
-          },
-          required: ["front", "back"]
-        }
+  const response = await callMochiAI(model, prompt, {
+    responseMimeType: "application/json",
+    responseSchema: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          front: { type: Type.STRING },
+          back: { type: Type.STRING }
+        },
+        required: ["front", "back"]
       }
     }
   });
@@ -150,10 +146,7 @@ export async function generateMochiImage(prompt: string, imageBase64?: string): 
     text: `Generate a high-quality illustration. Subject: ${prompt}. Style: Acubi aesthetic, soft dreamy pastels, cute characters. Output ONLY the image.`
   });
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: { parts }
-  });
+  const response = await callMochiAI(model, { parts });
 
   // Find the image part in the response
   for (const part of (response as any).candidates?.[0]?.content?.parts || []) {
@@ -169,20 +162,16 @@ export async function generateExamPrep(subject: string): Promise<any> {
   const model = "gemini-3-flash-preview";
   const prompt = `Create a 7-day exam preparation plan for: ${subject}. Return JSON.`;
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          schedule: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { day: { type: Type.STRING }, tasks: { type: Type.ARRAY, items: { type: Type.STRING } } } } },
-          breakdown: { type: Type.STRING },
-          quiz: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, answer: { type: Type.STRING } } } },
-          resources: { type: Type.ARRAY, items: { type: Type.STRING } },
-          motivation: { type: Type.STRING }
-        }
+  const response = await callMochiAI(model, prompt, {
+    responseMimeType: "application/json",
+    responseSchema: {
+      type: Type.OBJECT,
+      properties: {
+        schedule: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { day: { type: Type.STRING }, tasks: { type: Type.ARRAY, items: { type: Type.STRING } } } } },
+        breakdown: { type: Type.STRING },
+        quiz: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { question: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } }, answer: { type: Type.STRING } } } },
+        resources: { type: Type.ARRAY, items: { type: Type.STRING } },
+        motivation: { type: Type.STRING }
       }
     }
   });
@@ -191,9 +180,6 @@ export async function generateExamPrep(subject: string): Promise<any> {
 }
 
 export async function generateNotes(topic: string): Promise<string> {
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Write structured study notes for: ${topic}. Use Markdown.`
-  });
+  const response = await callMochiAI("gemini-3-flash-preview", `Write structured study notes for: ${topic}. Use Markdown.`);
   return response.text || "";
 }

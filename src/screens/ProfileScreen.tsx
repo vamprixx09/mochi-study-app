@@ -820,7 +820,7 @@ export default function ProfileScreen({
                 <h3 className="text-lg font-bold font-heading">{t('privacy')}</h3>
                 <p className="text-xs opacity-60 leading-relaxed">
                   Mochi Study respects your privacy. All your study data stays on your account. 
-                  We don't sell your data. Your AI features use Gemini, and your API keys are never stored on our servers. 🔮
+                  We don't sell your data. Your AI features use Gemini, which is provided automatically for all users. ✨
                 </p>
               </div>
               <button 
