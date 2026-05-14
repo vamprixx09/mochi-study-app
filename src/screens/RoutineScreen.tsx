@@ -265,19 +265,19 @@ export const RoutineScreen: React.FC<RoutineScreenProps> = ({ user, routine, onU
       {/* Edit Modal */}
       <AnimatePresence>
         {isEditing && selectedBlock && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsEditing(false)}
-              className="absolute inset-0 bg-black/20 backdrop-blur-md"
+              className="absolute inset-0 bg-black/40 backdrop-blur-md"
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-[2.5rem] p-8 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-white rounded-[2.5rem] p-6 md:p-8 shadow-2xl overflow-hidden mb-20 md:mb-0"
             >
               <div className="space-y-6">
                 <div className="flex items-center gap-3 mb-2">
@@ -361,19 +361,19 @@ export const RoutineScreen: React.FC<RoutineScreenProps> = ({ user, routine, onU
       {/* AI Modal */}
       <AnimatePresence>
         {showAIModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowAIModal(false)}
-              className="absolute inset-0 bg-black/20 backdrop-blur-md"
+              className="absolute inset-0 bg-black/40 backdrop-blur-md"
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-[2.5rem] p-8 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-white rounded-[2.5rem] p-6 md:p-8 shadow-2xl overflow-hidden mb-20 md:mb-0"
             >
               <div className="space-y-6">
                 <div className="flex items-center gap-3 mb-2">
