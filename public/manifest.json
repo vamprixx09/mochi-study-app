@@ -1,24 +1,21 @@
 {
   "name": "MOCHI // STUDY ⋆°｡🕊️",
   "short_name": "Mochi",
-  "description": "Your aesthetic AI-powered study companion.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FFF9F0",
-  "theme_color": "#FFF9F0",
-  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "https://drive.google.com/uc?id=1QskuwmZXGoTYGqicXnZkj29qjA_hKKg7",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "https://drive.google.com/uc?id=1QskuwmZXGoTYGqicXnZkj29qjA_hKKg7",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }
+

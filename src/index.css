@@ -94,6 +94,15 @@
   @apply absolute -top-1 -right-1 opacity-0 transition-opacity duration-300;
 }
 
+html, body {
+  @apply h-full overflow-hidden;
+  overscroll-behavior-y: contain;
+}
+
+#root {
+  @apply h-full overflow-y-auto;
+}
+
 .starlit {
   background-image: 
     radial-gradient(1px 1px at 20px 30px, #ffffff, rgba(0,0,0,0)),
