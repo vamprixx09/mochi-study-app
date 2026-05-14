@@ -8,12 +8,12 @@
     <!-- PWA Primary Meta Tags -->
     <meta name="theme-color" content="#ffffff" />
     <meta name="description" content="Your aesthetic AI study companion for focus, flashcards, and fun. 🍡" />
-    <link rel="manifest" href="/manifest.json?v=2" />
+    <link rel="manifest" href="/manifest.json" />
     
     <!-- iOS Support -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Mochi // Study" />
+    <meta name="apple-mobile-web-app-title" content="Mochi Study" />
     <link rel="apple-touch-icon" href="https://drive.google.com/uc?id=1QskuwmZXGoTYGqicXnZkj29qjA_hKKg7" />
     
     <!-- Android Support -->
@@ -27,6 +27,19 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('Service Worker registered with scope:', registration.scope);
+            })
+            .catch(error => {
+              console.log('Service Worker registration failed:', error);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
 
