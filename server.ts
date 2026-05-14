@@ -9,13 +9,13 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: "10mb" }));
 
   app.get("/api/mochi-health", (req, res) => {
     res.json({
       status: "online",
       message: "Mochi is ready! 🍡",
-      time: new Date().toISOString()
+      time: new Date().toISOString(),
     });
   });
 

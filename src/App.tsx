@@ -4,7 +4,7 @@ import { Navigation } from './components/Navigation';
 import { onAuthStateChanged, User as FirebaseUser, signInWithPopup, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, deleteField, writeBatch } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError } from './lib/firebase';
-import { UserProfile, Flashcard, Task, StudyLog, ChatMessage, ChatSession, StudyPlan, OperationType, CalendarSticker, SystemConfig, LanguageImmersionData, Habit } from './types';
+import { UserProfile, Flashcard, Task, StudyLog, ChatMessage, ChatSession, StudyPlan, OperationType, CalendarSticker, SystemConfig, LanguageImmersionData, Habit, DailyRoutine } from './types';
 import { cn } from './lib/utils';
 import { syncPremiumStatus } from './lib/premiumUtils';
 import { Loader2, LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
@@ -18,6 +18,7 @@ import PlannerScreen from './screens/PlannerScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import CreatorDashboard from './screens/CreatorDashboard';
 import PremiumScreen from './screens/PremiumScreen';
+import { RoutineScreen } from './screens/RoutineScreen';
 
 const initialUser: UserProfile = {
   name: 'Cutie',
@@ -48,6 +49,7 @@ export default function App() {
   const [plans, setPlans] = useState<StudyPlan[]>([]);
   const [calendarStickers, setCalendarStickers] = useState<CalendarSticker[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
+  const [routine, setRoutine] = useState<DailyRoutine | null>(null);
   const [languageImmersion, setLanguageImmersion] = useState<LanguageImmersionData>({
     streak: 0,
     lastActive: null,
@@ -181,7 +183,7 @@ export default function App() {
         const profileCleanup = () => profileUnsub();
 
         // Partitioned Data Sync
-        const dataPaths = ['flashcards', 'tasks', 'studyLogs', 'plans', 'chatHistory', 'chatSessions', 'calendarStickers', 'languageImmersion', 'habits'];
+        const dataPaths = ['flashcards', 'tasks', 'studyLogs', 'plans', 'chatHistory', 'chatSessions', 'calendarStickers', 'languageImmersion', 'habits', 'routine'];
         const unsubs: (() => void)[] = [profileCleanup];
 
           // System Config Sync
@@ -268,6 +270,7 @@ export default function App() {
               if (path === 'calendarStickers' && d.calendarStickers) setCalendarStickers(d.calendarStickers);
               if (path === 'languageImmersion' && d.languageImmersion) setLanguageImmersion(d.languageImmersion);
               if (path === 'habits' && d.habits) setHabits(d.habits);
+              if (path === 'routine' && d.routine) setRoutine(d.routine);
             }
           }, (err) => {
             handleFirestoreError(err, OperationType.GET, `userData/${u.uid}/parts/${path}`);
@@ -313,7 +316,7 @@ export default function App() {
         let hasChanges = false;
 
         // Route data to correct partitioned documents
-        ['flashcards', 'tasks', 'studyLogs', 'plans', 'chatHistory', 'chatSessions', 'calendarStickers', 'languageImmersion', 'habits'].forEach(path => {
+        ['flashcards', 'tasks', 'studyLogs', 'plans', 'chatHistory', 'chatSessions', 'calendarStickers', 'languageImmersion', 'habits', 'routine'].forEach(path => {
           if (data[path]) {
             let sanitized = sanitizeData(data[path]);
             
@@ -590,16 +593,36 @@ export default function App() {
         }
       }} />;
       case 'premium': return <PremiumScreen user={user} onBack={() => setActiveTab('profile')} />;
+      case 'routine': return (
+        <RoutineScreen 
+          user={user} 
+          routine={routine} 
+          onUpdateRoutine={async (data) => {
+            setRoutine(data);
+            saveToFirebase({ routine: data });
+          }} 
+        />
+      );
       default: return <HomeScreen user={user} tasks={tasks} studyLogs={studyLogs} setTab={setActiveTab} />;
     }
   };
 
   const getBgColor = () => {
+    // FREE Themes
     if (user.theme === 'night') return 'bg-[#1A1525] text-white';
     if (user.theme === 'cloud') return 'bg-[#F2F4F7] text-gray-800';
+    if (user.theme === 'latte') return 'bg-[#F5E6D3] text-[#7B5E4F]';
+    if (user.theme === 'mist') return 'bg-[#E3F2FD] text-[#546E7A]';
+    if (user.theme === 'vanilla') return 'bg-[#FFF9E5] text-[#D4A373]';
+    
+    // PREMIUM Themes
     if (user.theme === 'matcha') return 'bg-[#E2F0D9] text-[#2D4522]';
     if (user.theme === 'sakura') return 'bg-[#FFE4E1] text-[#704242]';
     if (user.theme === 'berry') return 'bg-[#F3E5F5] text-[#4A235A]';
+    if (user.theme === 'lavender') return 'bg-[#E6E6FA] text-[#6A5ACD]';
+    if (user.theme === 'honey') return 'bg-[#4B3621] text-[#EAD8C0]';
+    if (user.theme === 'moonlight') return 'bg-[#0F172A] text-[#F8FAFC] starlit';
+
     return 'bg-[#FFF9F0] text-gray-800'; // cream
   };
 

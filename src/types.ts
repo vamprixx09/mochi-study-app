@@ -14,6 +14,23 @@ export interface PremiumHistoryEntry {
   adminEmail?: string;
 }
 
+export interface RoutineBlock {
+  id: string;
+  title: string;
+  startTime: string; // HH:mm
+  duration: number; // minutes
+  type: 'study' | 'break' | 'revision' | 'quiz' | 'rest' | 'personal';
+  completed: boolean;
+  notes?: string;
+  subject?: string;
+}
+
+export interface DailyRoutine {
+  blocks: RoutineBlock[];
+  wakeUpTime: string;
+  updatedAt: string;
+}
+
 export interface UserProfile {
   uid?: string;
   email?: string;
@@ -25,7 +42,7 @@ export interface UserProfile {
   lastStudyDate: string | null;
   tasksCompleted: number;
   flashcardsMastered: number;
-  theme: 'cream' | 'cloud' | 'night' | 'matcha' | 'sakura' | 'berry';
+  theme: 'cream' | 'cloud' | 'night' | 'matcha' | 'sakura' | 'berry' | 'latte' | 'mist' | 'vanilla' | 'lavender' | 'honey' | 'moonlight';
   soundEnabled: boolean;
   language: string;
   aiVoiceEnabled?: boolean;
@@ -63,6 +80,7 @@ export interface LanguageImmersionData {
   activeGoal: string;
   unlockedBadges: string[];
   totalPreciseHours: number;
+  tutorSessions?: ChatSession[];
 }
 
 export interface Flashcard {

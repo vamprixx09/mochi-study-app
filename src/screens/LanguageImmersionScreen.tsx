@@ -5,10 +5,19 @@ import {
   Heart, Star, Layout, LayoutPanelLeft, Flower2,
   Mic, Music, BookOpen, PenTool, Trophy, Plus,
   Download, ArrowRight, Calendar, Calculator,
-  Quote, MessageCircle, Play, Pause, Headphones, Volume2, Info
+  Quote, MessageCircle, Play, Pause, Headphones, Volume2, Info,
+  Send, Loader2, Sparkle, Phone, History, PlusCircle, Trash2, XCircle, Copy
 } from 'lucide-react';
-import { UserProfile, LanguageImmersionData } from '../types';
+import { UserProfile, LanguageImmersionData, ChatMessage, ChatSession } from '../types';
 import { cn } from '../lib/utils';
+import { isFeatureUnlocked } from '../lib/premiumUtils';
+import { chatWithLanguageTutor, chatWithMochiStream } from '../services/geminiService';
+import { AICallOverlay } from '../components/AICallOverlay';
+
+// Simple unique ID generator
+const generateId = () => {
+  return Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+};
 
 interface LanguageImmersionScreenProps {
   user: UserProfile;
@@ -24,6 +33,155 @@ export default function LanguageImmersionScreen({ user, data, setData, onClose, 
   const [newPhonetic, setNewPhonetic] = useState('');
   const [activeTimer, setActiveTimer] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
+
+  const [activeGoal, setActiveGoal] = useState(data.activeGoal || "read a book in target language 📓");
+
+  // AI Tutor State
+  const [showTutor, setShowTutor] = useState(false);
+  const [tutorLanguage, setTutorLanguage] = useState('Japanese 🇯🇵');
+  const [tutorLevel, setTutorLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
+  const [tutorMessages, setTutorMessages] = useState<ChatMessage[]>([]);
+  const [tutorInput, setTutorInput] = useState('');
+  const [isTutorLoading, setIsTutorLoading] = useState(false);
+  const [isCalling, setIsCalling] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState(() => generateId());
+  const [copyStatus, setCopyStatus] = useState<number | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  
+  const tutorScrollRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (tutorScrollRef.current) {
+      tutorScrollRef.current.scrollTop = tutorScrollRef.current.scrollHeight;
+    }
+  }, [tutorMessages]);
+
+  const startTutorSession = () => {
+    if (!isFeatureUnlocked(user, 'ai_tutor')) {
+      onOpenPremium();
+      return;
+    }
+    setShowTutor(true);
+    if (tutorMessages.length === 0) {
+      const initial = `Konnichiwa! 🌸 I'm Mochi Tutu, your favorite language friend. I'm ready to help you practice ${tutorLanguage}! Shall we start with some simple greetings or a small roleplay? 🍡`;
+      setTutorMessages([{ role: 'model', content: initial, timestamp: new Date().toISOString() }]);
+    }
+    playSound('sparkle');
+  };
+
+  const handleTutorSend = async (messageOverride?: string | any) => {
+    const text = (typeof messageOverride === 'string' ? messageOverride : tutorInput) || "";
+    if (!text || typeof text.trim !== 'function' || !text.trim() || isTutorLoading) return;
+    
+    const textToSend = text.trim();
+    
+    const userMsg = { role: 'user' as const, content: textToSend, timestamp: new Date().toISOString() };
+    const newMessages = [...tutorMessages, userMsg];
+    setTutorMessages(newMessages);
+    if (!messageOverride) setTutorInput('');
+    setIsTutorLoading(true);
+    playSound('pop');
+
+    try {
+      const response = await chatWithLanguageTutor(tutorLanguage, tutorLevel, newMessages);
+      const modelMsg = { role: 'model' as const, content: response, timestamp: new Date().toISOString() };
+      const updatedMessages = [...newMessages, modelMsg];
+      setTutorMessages(updatedMessages);
+      saveTutorSession(updatedMessages);
+      playSound('sparkle');
+    } catch (error: any) {
+      console.error(error);
+      const isApiKeyError = error.message === 'API_KEY_INVALID';
+      const msg = isApiKeyError 
+        ? "Mochi needs your AI magic! ✨ Please go to Settings -> Secrets and ensure your Gemini API key is set correctly. 🎀"
+        : "Oh no! My language flower wilted for a second... 🥺 Please try again!";
+      setTutorMessages(prev => [...prev, { role: 'model', content: msg, timestamp: new Date().toISOString() }]);
+    } finally {
+      setIsTutorLoading(false);
+    }
+  };
+
+  const saveTutorSession = (messages: ChatMessage[]) => {
+    if (messages.length <= 1) return;
+    
+    const title = `Tutu: ${tutorLanguage} (${tutorLevel})`;
+    const newSession: ChatSession = {
+      id: currentSessionId,
+      date: new Date().toISOString(),
+      title,
+      messages
+    };
+
+    setData(prev => {
+      const existingSessions = prev.tutorSessions || [];
+      const filtered = existingSessions.filter(s => s.id !== currentSessionId);
+      return {
+        ...prev,
+        tutorSessions: [newSession, ...filtered].slice(0, 30)
+      };
+    });
+  };
+
+  const startNewTutorChat = () => {
+    if (tutorMessages.length > 1) saveTutorSession(tutorMessages);
+    const initial = `Konnichiwa! 🌸 I'm Mochi Tutu, your favorite language friend. I'm ready to help you practice ${tutorLanguage}! Shall we start with some simple greetings or a small roleplay? 🍡`;
+    setTutorMessages([{ role: 'model', content: initial, timestamp: new Date().toISOString() }]);
+    setCurrentSessionId(generateId());
+    playSound('sparkle');
+  };
+
+  const loadTutorSession = (session: ChatSession) => {
+    if (tutorMessages.length > 1) saveTutorSession(tutorMessages);
+    setTutorMessages(session.messages);
+    setCurrentSessionId(session.id);
+    setShowHistory(false);
+    playSound('pop');
+  };
+
+  const startCall = () => {
+    setIsCalling(true);
+    if (user.soundEnabled) {
+      new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(() => {});
+    }
+  };
+
+  const handleCallClose = (transcript?: string[]) => {
+    setIsCalling(false);
+    if (transcript && transcript.length > 0) {
+      const summary = `**Voice Call Highlight ✨**\n\nWe spoke in ${tutorLanguage}! 🎀 Here's what we covered:\n\n${transcript.join('\n')}\n\nI've added this to our lesson history! 🍡`;
+      const msg: ChatMessage = { role: 'model', content: summary, timestamp: new Date().toISOString() };
+      const updated = [...tutorMessages, msg];
+      setTutorMessages(updated);
+      saveTutorSession(updated);
+    }
+  };
+
+  const handleCallMessage = async (text: string, onChunk: (text: string) => void) => {
+    const historyForApi = tutorMessages.map(m => ({
+      role: m.role as 'user' | 'model',
+      parts: [{ text: m.content }]
+    }));
+
+    const systemInstruction = `You are "Mochi Tutu", a friendly and kawaii language learning tutor. 
+    The user is practicing ${tutorLanguage} at a ${tutorLevel} level.
+    
+    VOICE CALL RULES:
+    1. Speak primarily in the user's current language (detected from context).
+    2. If the user switches languages (e.g. from English to ${tutorLanguage} or vice versa), switch with them seamlessly.
+    3. Keep responses concise and conversational for voice interaction.
+    4. Automatically detect if the user is struggling and offer gentle guidance.
+    5. Supported practice: English, Urdu, Hindi, Japanese, Korean, Chinese, Arabic, French, Spanish.
+    6. Always stay in your Mochi Tutu character! 🍡🌸`;
+
+    return await chatWithMochiStream(
+      text,
+      historyForApi,
+      onChunk,
+      undefined,
+      undefined
+    );
+  };
 
   const prompts = [
     "Tell me about your favorite childhood memory. 🌸",
@@ -66,16 +224,76 @@ export default function LanguageImmersionScreen({ user, data, setData, onClose, 
     audio.play().catch(e => console.log('Audio play failed', e));
   };
 
-  const handleSpeak = (text: string) => {
-    if (!window.speechSynthesis) {
-      alert("TTS not supported in this browser 🥺");
-      return;
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = React.useRef<any>(null);
+
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = tutorLanguage.split(' ')[0] === 'English' ? 'en-US' : (
+        tutorLanguage.includes('Japanese') ? 'ja-JP' :
+        tutorLanguage.includes('Korean') ? 'ko-KR' :
+        tutorLanguage.includes('Chinese') ? 'zh-CN' :
+        tutorLanguage.includes('Spanish') ? 'es-ES' :
+        tutorLanguage.includes('Urdu') ? 'ur-PK' :
+        tutorLanguage.includes('Arabic') ? 'ar-SA' :
+        tutorLanguage.includes('French') ? 'fr-FR' : 'en-US'
+      );
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map((result: any) => result.transcript)
+          .join('');
+        setTutorInput(prev => prev ? prev + ' ' + transcript : transcript);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        setIsRecording(false);
+      };
     }
+  }, [tutorLanguage]);
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      recognitionRef.current?.stop();
+    } else {
+      try {
+        recognitionRef.current?.start();
+        setIsRecording(true);
+        playSound('pop');
+      } catch (err) {
+        console.error('Failed to start recognition', err);
+      }
+    }
+  };
+
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 2000);
+  };
+
+  const copyToClipboard = (text: string, index: number) => {
+    navigator.clipboard.writeText(text);
+    setCopyStatus(index);
+    showToast('Copied to clipboard! 📋');
+    playSound('pop');
+    setTimeout(() => setCopyStatus(null), 2000);
+  };
+
+  const handleSpeakText = (text: string) => {
+    if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    // Try to auto-detect language or use user setting if possible
-    // For now, default is reasonable
-    utterance.rate = 0.9; // Slightly slower for clarity
+    utterance.rate = 0.9;
     window.speechSynthesis.speak(utterance);
   };
 
@@ -168,8 +386,9 @@ export default function LanguageImmersionScreen({ user, data, setData, onClose, 
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
-        {/* Section 1: Streak */}
+        {/* Section streak area ... */}
         <section className="bg-white/40 p-6 rounded-[3rem] border-2 border-[#FFD1DC] relative overflow-hidden text-center">
+            {/* ... streak content ... */}
             <div className="absolute top-2 left-4 text-xs opacity-20">⋆˚࿔ ༘♡ 🪽</div>
             <div className="absolute bottom-2 right-4 text-xs opacity-20">🪽 ༘♡ ⋆˚࿔</div>
             
@@ -180,19 +399,236 @@ export default function LanguageImmersionScreen({ user, data, setData, onClose, 
               {data.streak} <span className="text-xl">days</span>
             </div>
             
-            <motion.button 
-              onClick={() => {
-                setData(prev => ({ ...prev, streak: prev.streak + 1, lastActive: new Date().toISOString() }));
-                playSound('sparkle');
-              }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="mt-2 px-6 py-2 bg-[#FFB7C5] text-white rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg"
-            >
-              +1 day streak 🌸
-            </motion.button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+              <motion.button 
+                onClick={() => {
+                  setData(prev => ({ ...prev, streak: prev.streak + 1, lastActive: new Date().toISOString() }));
+                  playSound('sparkle');
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-6 py-2 bg-[#FFB7C5] text-white rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg"
+              >
+                +1 day streak 🌸
+              </motion.button>
+
+              <button 
+                onClick={startTutorSession}
+                className="px-6 py-2 bg-white border-2 border-[#FFD1DC] text-[#8E414E] rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm hover:bg-pink-50 transition-all"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-mochi-pink" /> 
+                {isFeatureUnlocked(user, 'ai_tutor') ? 'AI Tutor Tutor' : 'Unlock AI Tutor 👑'}
+              </button>
+            </div>
             <p className="text-[9px] mt-4 opacity-70 font-bold italic text-[#8E414E]">keep your language flower blooming {data.streak > 0 ? '🌸' : '🥀→🌸'}</p>
         </section>
+
+        {/* AI Tutor Modal */}
+        <AnimatePresence>
+          {showTutor && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-4 md:inset-10 z-[200] glass bg-white/95 rounded-[3rem] shadow-2xl flex flex-col border-4 border-[#FFD1DC] overflow-hidden"
+            >
+               <div className="p-6 border-b border-pink-100 flex items-center justify-between bg-[#FFE4E1]/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-[#FFB7C5] rounded-2xl flex items-center justify-center text-white text-2xl shadow-inner">🍡</div>
+                    <div className="flex flex-col">
+                      <h3 className="text-xl font-black font-heading tracking-tight italic text-[#8E414E]">Mochi Tutu AI 🪽</h3>
+                      <div className="flex items-center gap-2">
+                        <select 
+                          value={tutorLanguage}
+                          onChange={(e) => setTutorLanguage(e.target.value)}
+                          className="bg-transparent text-[10px] font-black uppercase text-[#8E414E]/60 outline-none cursor-pointer"
+                        >
+                          <option>Japanese 🇯🇵</option>
+                          <option>Korean 🇰🇷</option>
+                          <option>Chinese 🇨🇳</option>
+                          <option>Spanish 🇪🇸</option>
+                          <option>French 🇫🇷</option>
+                          <option>English 🇺🇸</option>
+                          <option>Urdu 🇵🇰</option>
+                          <option>Arabic 🇸🇦</option>
+                          <option>Hindi 🇮🇳</option>
+                        </select>
+                        <select 
+                          value={tutorLevel}
+                          onChange={(e) => setTutorLevel(e.target.value as any)}
+                          className="bg-transparent text-[10px] font-black uppercase text-[#8E414E]/60 outline-none cursor-pointer"
+                        >
+                          <option value="beginner">Beginner</option>
+                          <option value="intermediate">Intermediate</option>
+                          <option value="advanced">Advanced</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={startCall}
+                      className="p-2.5 bg-white text-mochi-pink rounded-2xl shadow-sm hover:scale-110 active:scale-95 transition-all"
+                      title="AI Voice Call 📞"
+                    >
+                      <Phone className="w-5 h-5" />
+                    </button>
+                    <button 
+                      onClick={() => setShowHistory(!showHistory)}
+                      className={cn(
+                        "p-2.5 rounded-2xl shadow-sm transition-all",
+                        showHistory ? "bg-mochi-pink text-white" : "bg-white text-mochi-pink"
+                      )}
+                      title="Lesson History 📖"
+                    >
+                      <History className="w-5 h-5" />
+                    </button>
+                    <button onClick={() => setShowTutor(false)} className="p-2.5 bg-white text-[#8E414E] rounded-2xl hover:bg-gray-50"><X className="w-6 h-6" /></button>
+                  </div>
+               </div>
+
+               <div className="flex-1 relative overflow-hidden flex flex-col">
+                 {/* Tutor History Overlay */}
+                 <AnimatePresence>
+                   {showHistory && (
+                     <motion.div 
+                       initial={{ opacity: 0, x: -20 }}
+                       animate={{ opacity: 1, x: 0 }}
+                       exit={{ opacity: 0, x: -20 }}
+                       className="absolute inset-0 z-50 bg-white/95 backdrop-blur-md p-6 overflow-y-auto scrollbar-hide"
+                     >
+                       <div className="flex items-center justify-between mb-6">
+                         <h3 className="text-xl font-black font-heading flex items-center gap-2 text-[#8E414E]">
+                           <History className="text-mochi-pink" /> Past Lessons
+                         </h3>
+                         <button 
+                           onClick={startNewTutorChat}
+                           className="flex items-center gap-2 px-4 py-2 bg-mochi-pink text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-md hover:scale-105 transition-all"
+                         >
+                           <PlusCircle className="w-4 h-4" /> New Session
+                         </button>
+                       </div>
+
+                       <div className="space-y-3">
+                         {(!data.tutorSessions || data.tutorSessions.length === 0) ? (
+                           <div className="text-center py-20 opacity-40 italic text-sm text-[#8E414E]">No lesson history yet... 🌸</div>
+                         ) : (
+                           data.tutorSessions.map((session) => (
+                             <div 
+                               key={session.id}
+                               onClick={() => loadTutorSession(session)}
+                               className={cn(
+                                 "group p-4 glass bg-white rounded-3xl cursor-pointer hover:border-mochi-pink transition-all border-2",
+                                 currentSessionId === session.id ? "border-mochi-pink" : "border-pink-50"
+                               )}
+                             >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="text-[11px] font-black text-[#8E414E]">{session.title}</p>
+                                    <p className="text-[9px] opacity-40 font-bold uppercase mt-1">
+                                      {new Date(session.date).toLocaleDateString()} • {new Date(session.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm("Delete this lesson session? 🥺")) {
+                                          setData(prev => ({
+                                            ...prev,
+                                            tutorSessions: (prev.tutorSessions || []).filter(s => s.id !== session.id)
+                                          }));
+                                          if (currentSessionId === session.id) {
+                                            startNewTutorChat();
+                                          }
+                                          playSound('pop');
+                                        }
+                                      }}
+                                      className="p-1.5 text-red-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                    <ChevronRight className="w-4 h-4 text-pink-200 group-hover:text-mochi-pink transition-colors" />
+                                  </div>
+                                </div>
+                             </div>
+                           ))
+                         )}
+                       </div>
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
+
+                  <div ref={tutorScrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide">
+                    {tutorMessages.map((msg, i) => (
+                      <div key={i} className={cn("flex flex-col", msg.role === 'user' ? "items-end" : "items-start")}>
+                        <div className={cn(
+                          "max-w-[85%] p-4 rounded-3xl text-sm font-medium shadow-sm leading-relaxed relative group",
+                          msg.role === 'user' ? "bg-[#FFB7C5] text-white rounded-tr-none" : "bg-white border border-pink-100 text-[#8E414E] rounded-tl-none"
+                        )}>
+                          {msg.content.split('\n').map((line, j) => (
+                            <p key={j} className={cn(j > 0 ? "mt-1.5" : "", "selectable")}>{line}</p>
+                          ))}
+                          <div className={cn(
+                            "absolute -right-10 top-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all",
+                            msg.role === 'user' ? "hidden" : ""
+                          )}>
+                            <button 
+                              onClick={() => handleSpeakText(msg.content)}
+                              className="p-2 bg-white text-mochi-pink rounded-xl shadow-sm hover:scale-110 active:scale-95"
+                              title="Listen to pronunciation 🌸"
+                            >
+                              <Volume2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => copyToClipboard(msg.content, i)}
+                              className="p-2 bg-white text-mochi-pink rounded-xl shadow-sm hover:scale-110 active:scale-95"
+                              title="Copy message ✨"
+                            >
+                              {copyStatus === i ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {isTutorLoading && (
+                      <div className="flex items-center gap-2 text-[10px] font-black text-[#8E414E]/40 italic ml-4">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Mochi Tutu is thinking... 🍡
+                      </div>
+                    )}
+                  </div>
+               </div>
+
+               <div className="p-6 bg-pink-50/30 border-t border-pink-100">
+                  <div className="flex gap-3 glass bg-white p-2 rounded-[2rem] border-white shadow-lg shadow-pink-100/50 items-end">
+                    <button 
+                      onClick={toggleRecording}
+                      className={cn(
+                        "w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-90",
+                        isRecording ? "bg-red-500 text-white animate-pulse shadow-red-100" : "bg-pink-50 text-mochi-pink"
+                      )}
+                      title="Voice Message 🎤"
+                    >
+                      <Mic className="w-5 h-5" />
+                    </button>
+                    <textarea 
+                      value={tutorInput}
+                      onChange={(e) => setTutorInput(e.target.value)}
+                      placeholder="Say something to Mochi Tutu... 🌸"
+                      className="flex-1 bg-transparent border-none outline-none px-4 py-3 text-sm font-medium text-[#8E414E] min-h-[48px] max-h-32 resize-none scrollbar-hide"
+                    />
+                    <button 
+                      onClick={() => handleTutorSend()}
+                      disabled={!tutorInput.trim() || isTutorLoading}
+                      className="w-12 h-12 bg-[#FFB7C5] text-white rounded-xl flex items-center justify-center disabled:opacity-50 shadow-md transition-all active:scale-95 shrink-0"
+                    >
+                      <Send className="w-5 h-5" />
+                    </button>
+                  </div>
+               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Section 2: Vocabulary Tracker */}
         <section className="space-y-4">
@@ -258,10 +694,17 @@ export default function LanguageImmersionScreen({ user, data, setData, onClose, 
                       <div key={idx} className="flex items-center justify-between p-3 bg-white/40 rounded-2xl border border-pink-50/50 group">
                         <div className="flex items-center gap-3">
                           <button 
-                            onClick={() => handleSpeak(v.word)}
+                            onClick={() => handleSpeakText(v.word)}
                             className="w-8 h-8 flex items-center justify-center bg-white rounded-xl text-[#FFB7C5] shadow-sm hover:scale-110 active:scale-95 transition-all"
                           >
                             <Volume2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => copyToClipboard(`${v.word}${v.phonetic ? ` [${v.phonetic}]` : ''} - ${v.meaning}`, idx + 1000)}
+                            className="w-8 h-8 flex items-center justify-center bg-white rounded-xl text-[#FFB7C5] shadow-sm hover:scale-110 active:scale-95 transition-all"
+                            title="Copy word info 🍡"
+                          >
+                            {copyStatus === idx + 1000 ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                           </button>
                           <div>
                             <div className="text-[11px] font-black text-[#8E414E] flex items-center gap-2">
@@ -383,12 +826,22 @@ export default function LanguageImmersionScreen({ user, data, setData, onClose, 
                    <Trophy className="w-3 h-3" /> Fun Rewards 🍡🍬
                  </h4>
                  <div className="text-center p-4 glass bg-white/90 rounded-[2rem] border-white shadow-sm space-y-1 relative group">
-                    <button 
-                      onClick={() => handleSpeak(dailySnack.word)}
-                      className="absolute top-2 right-2 p-2 bg-pink-50 text-[#FFB7C5] rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-95"
-                    >
-                      <Volume2 className="w-4 h-4" />
-                    </button>
+                    <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <button 
+                        onClick={() => handleSpeakText(dailySnack.word)}
+                        className="p-2 bg-pink-50 text-[#FFB7C5] rounded-xl hover:scale-110 active:scale-95"
+                        title="Pronounce 🌸"
+                      >
+                        <Volume2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => copyToClipboard(`${dailySnack.word} - ${dailySnack.meaning}`, 2000)}
+                        className="p-2 bg-pink-50 text-[#FFB7C5] rounded-xl hover:scale-110 active:scale-95"
+                        title="Copy snack ✨"
+                      >
+                        {copyStatus === 2000 ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
                     <p className="text-[8px] font-black opacity-60 text-[#8E414E] uppercase tracking-[0.2em]">daily language snack</p>
                     <div className="text-xl">{dailySnack.emoji}</div>
                     <div className="text-sm font-black text-[#8E414E]">{dailySnack.word}</div>
@@ -477,6 +930,27 @@ export default function LanguageImmersionScreen({ user, data, setData, onClose, 
                </div>
              </div>
              <button onClick={() => setActiveTimer(null)} className="p-3 bg-white text-[#FFB7C5] rounded-2xl shadow-xl font-black text-xs">STOP</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AICallOverlay 
+        isOpen={isCalling}
+        onClose={handleCallClose}
+        onSendMessage={handleCallMessage}
+        userLanguage={tutorLanguage.split(' ')[0]}
+      />
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 20, x: '-50%' }}
+            className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-mochi-pink text-white px-6 py-2.5 rounded-full text-xs font-bold shadow-xl z-[300] whitespace-nowrap"
+          >
+            {toast}
           </motion.div>
         )}
       </AnimatePresence>

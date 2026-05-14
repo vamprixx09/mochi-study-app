@@ -24,7 +24,7 @@ export default function PremiumScreen({ user, onBack }: PremiumScreenProps) {
       label: 'Exclusive Themes', 
       free: 'Standard', 
       premium: 'Pro Themes',
-      desc: 'Unlock Matcha, Sakura, Midnight, and 5+ more aesthetic themes. 🎨'
+      desc: 'Unlock Matcha, Sakura, Lavender Dream, Honey Milk, and 8+ more aesthetic themes. 🎨'
     },
     { 
       icon: Sparkles, 

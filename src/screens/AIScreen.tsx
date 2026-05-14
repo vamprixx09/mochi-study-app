@@ -10,10 +10,12 @@ import ReactMarkdown from 'react-markdown';
 import { ChatMessage, UserProfile, ChatSession } from '../types';
 import { isFeatureUnlocked } from '../lib/premiumUtils';
 import { MochiMascot } from '../components/MochiMascot';
-import { chatWithMochiStream, generateMochiImage, generateNotes } from '../services/geminiService';
+import { AICallOverlay } from '../components/AICallOverlay';
+import { chatWithMochiStream, generateMochiImage, generateNotes, generatePDFContent } from '../services/geminiService';
 import { cn } from '../lib/utils';
 import { getTranslation } from '../lib/translations';
 import { exportToPDF } from '../lib/exportUtils';
+import { generateStudyPDF } from '../lib/pdfUtils';
 
 // Simple unique ID generator
 const generateId = () => {
@@ -162,13 +164,23 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
   };
 
   const toggleVoiceInput = () => {
-    // If specifically in "Voice Call" mode (isCalling), we use handleStartRecording/Stop
-    // For the main input mic, we'll keep STT but maybe the user wants VM there too?
-    // Let's use handleStartRecording for the VM feel.
+    if (!isSTTSupported) {
+      showToast("Speech recognition not supported in this browser 🥺");
+      return;
+    }
+
     if (isRecording) {
-      handleStopRecording();
+      recognitionRef.current?.stop();
     } else {
-      handleStartRecording();
+      try {
+        recognitionRef.current?.start();
+        setIsRecording(true);
+        playSound('pop');
+        showToast("Mochi is listening... 🎤");
+      } catch (err) {
+        console.error("STT error:", err);
+        showToast("Mochi's ears are a bit fuzzy right now... 🥺");
+      }
     }
   };
   
@@ -421,16 +433,42 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
     const currentHistory = historyOverride || chatHistory;
 
     // Check for special commands
-    const isImageGen = isImageGenMode ||
-                      (text && (text.toLowerCase().includes('generate an image') || 
-                      text.toLowerCase().includes('draw') || 
-                      text.toLowerCase().includes('make a picture') ||
-                      text.toLowerCase().includes('create an image') ||
-                      text.toLowerCase().includes('imagine') ||
-                      text.toLowerCase().includes('show me a picture') ||
-                      text.toLowerCase().includes('can you draw')));
+    const isImageGen = isImageGenMode || (text && /\b(imagine|draw|create image|generate image|make a picture|illustration|paint)\b/i.test(text));
     
-    const isNoteGen = isNoteGenMode || (!isImageGen && (text && (text.toLowerCase().includes('create a note') || 
+    const isPDFRequest = text && (/\b(pdf|revision notes|study notes|printable|downloadable notes)\b/i.test(text) || 
+                         (text.toLowerCase().includes("make") && text.toLowerCase().includes("notes")) ||
+                         (text.toLowerCase().includes("create") && text.toLowerCase().includes("summary") && text.toLowerCase().includes("pdf")));
+
+    const isDeepSummary = text && (/\b(deep summary|detailed summary|comprehensive review|summarize deeply|deep dive)\b/i.test(text));
+
+    const isProductivityAsst = text && (/\b(schedule my day|organize my tasks|productivity plan|optimal schedule)\b/i.test(text) && !text.toLowerCase().includes('how to'));
+    
+    // Premium checks for advanced tools
+    if (isImageGen && !isFeatureUnlocked(user, 'image_gen')) {
+      showToast("Mochi's canvas is for Premium users! 🎨");
+      onOpenPremium();
+      return;
+    }
+
+    if (isPDFRequest && !isFeatureUnlocked(user, 'ai_pdf')) {
+      showToast("Smart PDF generation is a Premium feature! 🍡");
+      onOpenPremium();
+      return;
+    }
+
+    if (isDeepSummary && !isFeatureUnlocked(user, 'ai_advanced')) {
+      showToast("Deep summaries are for Premium users! 📚");
+      onOpenPremium();
+      return;
+    }
+
+    if (isProductivityAsst && !isFeatureUnlocked(user, 'ai_advanced')) {
+      showToast("Premium Productivity Assistant unlocked! 🍡");
+      onOpenPremium();
+      return;
+    }
+
+    const isNoteGen = isNoteGenMode || (!isImageGen && !isPDFRequest && !isDeepSummary && !isProductivityAsst && (text && (text.toLowerCase().includes('create a note') || 
                       text.toLowerCase().includes('study note'))));
 
     let displayText = attachedFile ? `[Linked File: ${attachedFile.name}] ${text}` : text;
@@ -475,6 +513,27 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
         };
         setChatHistory(prev => {
           const next = [...prev, mochiMessage];
+          syncChatToCloud(next);
+          return next;
+        });
+        playSound('sparkle');
+      } else if (isPDFRequest) {
+        setChatHistory(prev => [...prev, {
+          role: 'model',
+          content: "I'm crafting your aesthetic study PDF notes right now... please wait a moment! ✨🍡",
+          timestamp: new Date().toISOString()
+        }]);
+        
+        const pdfData = await generatePDFContent(text!);
+        generateStudyPDF(pdfData);
+        
+        setChatHistory(prev => {
+          const next = prev.map((m, idx) => {
+            if (idx === prev.length - 1) {
+              return { ...m, content: "Your Smart PDF has been generated and downloaded! 🎀 Check your downloads folder. Would you like me to explain any part of it? 🍥" };
+            }
+            return m;
+          });
           syncChatToCloud(next);
           return next;
         });
@@ -534,9 +593,17 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
       // Restore input if it failed 🎀
       if (text) setInput(text); 
       
+      const isApiKeyError = error instanceof Error && (
+        error.message.includes('API_KEY_INVALID') || 
+        error.message.includes('403') || 
+        error.message.includes('401')
+      );
+
       const errorMessage: ChatMessage = {
         role: 'model',
-        content: `Mochi had a little hiccup... 🥺 (Error: ${error instanceof Error ? error.message : 'Unknown'}). I've put your text back in the input box so you can try again! 🎀`,
+        content: isApiKeyError 
+          ? "Mochi needs your AI magic! ✨ Please go to **Settings -> Secrets** and ensure your **Gemini API key** is set correctly. 🎀"
+          : `Mochi had a little hiccup... 🥺 (Error: ${error instanceof Error ? error.message : 'Unknown'}). I've put your text back in the input box so you can try again! 🎀`,
         timestamp: new Date().toISOString()
       };
       setChatHistory(prev => [...prev, errorMessage]);
@@ -621,8 +688,42 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
     }
   };
 
+  const handleCallClose = (callTranscript?: string[]) => {
+    setIsCalling(false);
+    if (callTranscript && callTranscript.length > 0) {
+      // Add a summary message to chat history so they see what they talked about
+      const sessionSummary: ChatMessage = {
+        role: 'model',
+        content: `**Voice Call Summary ✨**\n\nWe just had a lovely voice conversation! 🎀 Here are the highlights of what we discussed:\n\n${callTranscript.join('\n')}\n\nI've saved this to our chat history so you can review it anytime! 🍥`,
+        timestamp: new Date().toISOString()
+      };
+      setChatHistory(prev => [...prev, sessionSummary]);
+      syncChatToCloud([...chatHistory, sessionSummary]);
+      showToast("Call saved to history! 🎀");
+    }
+  };
+
+  const handleCallMessage = async (text: string, onChunk: (text: string) => void) => {
+    const historyForApi = chatHistory.map(c => ({
+      role: c.role as 'user' | 'model',
+      parts: [{ text: c.content }]
+    }));
+
+    return await chatWithMochiStream(
+      text,
+      historyForApi,
+      onChunk
+    );
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] relative">
+      <AICallOverlay 
+        isOpen={isCalling}
+        onClose={handleCallClose}
+        onSendMessage={handleCallMessage}
+        userLanguage={user.language}
+      />
       {/* Header */}
       <div className="flex flex-col mb-4 gap-3">
         <div className="flex items-center justify-between">
@@ -738,57 +839,7 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
         )}
       </AnimatePresence>
 
-      {/* Call Overlay (Same as before) */}
-      <AnimatePresence>
-        {isCalling && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="absolute inset-0 z-50 bg-mochi-lavender/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-white rounded-[2rem] m-2 overflow-hidden shadow-2xl"
-          >
-            <div className="relative">
-              <MochiMascot size="lg" className="mb-8" />
-              <motion.div 
-                animate={{ scale: [1, 1.2, 1] }} 
-                transition={{ duration: 2, repeat: Infinity }}
-                className="absolute inset-0 bg-white/20 rounded-full -z-10 blur-xl"
-              />
-            </div>
-            
-            <div className="text-center space-y-2 mb-12">
-              <h3 className="text-2xl font-bold font-heading">{t('mochi_calling')}</h3>
-              <p className="text-sm opacity-80 uppercase tracking-widest font-bold">{t('awaiting_voice')}</p>
-            </div>
-            
-            <div className="flex gap-8">
-              <button 
-                onClick={() => isRecording ? handleStopRecording() : handleStartRecording()}
-                className={cn(
-                  "w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl",
-                  isRecording ? "bg-red-400 animate-pulse scale-110" : "bg-white/20 hover:bg-white/30"
-                )}
-              >
-                <Mic className="w-8 h-8 text-white" />
-              </button>
-              <button 
-                onClick={() => {
-                  if (audioBase64) {
-                    handleSend();
-                  }
-                  setIsCalling(false);
-                }}
-                className={cn(
-                  "w-20 h-20 rounded-full flex items-center justify-center shadow-xl transition-all",
-                  audioBase64 ? "bg-green-500 scale-105" : "bg-red-500 hover:bg-red-600 rotate-[135deg]"
-                )}
-              >
-                {audioBase64 ? <Send className="w-8 h-8 text-white" /> : <Phone className="w-8 h-8 text-white" />}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Call Overlay (Handled by Component) */}
 
       {/* Chat Area */}
       <div 
@@ -1109,23 +1160,17 @@ export default function AIScreen({ chatHistory, setChatHistory, chatSessions, se
             accept="image/*,.pdf,.txt" 
             onChange={handleFileUpload} 
           />
-          <input
+          <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
             placeholder={`${t('ask_mochi')}... 🎀`}
-            className="flex-1 bg-transparent border-none outline-none text-sm px-2 h-10 min-w-0"
+            className="flex-1 bg-transparent border-none outline-none text-sm px-2 py-3 min-h-[40px] max-h-32 resize-none scrollbar-hide"
           />
           <button
             onClick={() => handleSend()}
             disabled={(!input && !image && !attachedFile && !audioBase64) || isLoading}
             className={cn(
-              "p-3 rounded-full transition-all flex items-center justify-center shrink-0 shadow-sm",
+              "self-end p-3 rounded-full transition-all flex items-center justify-center shrink-0 shadow-sm mb-1",
               (input || image || attachedFile || audioBase64) && !isLoading 
                 ? "bg-mochi-pink text-white shadow-md active:scale-95" 
                 : "bg-mochi-pink/40 text-white/80 cursor-default"

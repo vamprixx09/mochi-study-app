@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   User, Settings, Award, Download, 
-  Trash2, Info, ChevronRight, X, Edit, Check, Star, MessageCircle, ShieldCheck, Instagram, Pin,
+  Trash2, Info, ChevronRight, X, Edit, Check, Star, MessageCircle, ShieldCheck, Instagram, Pin, Coffee,
   Volume2, VolumeX, Globe, Upload, Sun, Cloud, Moon, Play, Pause, Music, Crown, Sparkles, Heart, Palette,
   Calendar, Clock, History, CheckCircle2
 } from 'lucide-react';
@@ -486,6 +486,9 @@ export default function ProfileScreen({
                 <ThemeBtn icon={Sun} label={t('theme_cream')} active={user.theme === 'cream'} onClick={() => { setUser(prev => ({ ...prev, theme: 'cream' })); playSound('pop'); }} color="bg-[#FFF9F0]" />
                 <ThemeBtn icon={Cloud} label={t('theme_cloud')} active={user.theme === 'cloud'} onClick={() => { setUser(prev => ({ ...prev, theme: 'cloud' })); playSound('pop'); }} color="bg-[#F2F4F7]" />
                 <ThemeBtn icon={Moon} label={t('theme_night')} active={user.theme === 'night'} onClick={() => { setUser(prev => ({ ...prev, theme: 'night' })); playSound('pop'); }} color="bg-[#1A1525] text-white" />
+                <ThemeBtn icon={Coffee} label={t('theme_latte')} active={user.theme === 'latte'} onClick={() => { setUser(prev => ({ ...prev, theme: 'latte' })); playSound('pop'); }} color="bg-[#F5E6D3]" />
+                <ThemeBtn icon={Cloud} label={t('theme_mist')} active={user.theme === 'mist'} onClick={() => { setUser(prev => ({ ...prev, theme: 'mist' })); playSound('pop'); }} color="bg-[#E3F2FD]" />
+                <ThemeBtn icon={Sun} label={t('theme_vanilla')} active={user.theme === 'vanilla'} onClick={() => { setUser(prev => ({ ...prev, theme: 'vanilla' })); playSound('pop'); }} color="bg-[#FFF9E5]" />
                 
                 {/* Pro Themes */}
                 <ThemeBtn 
@@ -526,6 +529,45 @@ export default function ProfileScreen({
                     playSound('pop');
                   }} 
                   color="bg-[#F3E5F5]" 
+                />
+                <ThemeBtn 
+                  user={user}
+                  icon={Sparkles} 
+                  label="Lavender" 
+                  isPro 
+                  active={user.theme === 'lavender'} 
+                  onClick={() => {
+                    if (!isFeatureUnlocked(user, 'themes')) { onOpenPremium(); return; }
+                    setUser(prev => ({ ...prev, theme: 'lavender' }));
+                    playSound('pop');
+                  }} 
+                  color="bg-[#E6E6FA]" 
+                />
+                <ThemeBtn 
+                  user={user}
+                  icon={Star} 
+                  label="Honey Milk" 
+                  isPro 
+                  active={user.theme === 'honey'} 
+                  onClick={() => {
+                    if (!isFeatureUnlocked(user, 'themes')) { onOpenPremium(); return; }
+                    setUser(prev => ({ ...prev, theme: 'honey' }));
+                    playSound('pop');
+                  }} 
+                  color="bg-[#4B3621]" 
+                />
+                <ThemeBtn 
+                  user={user}
+                  icon={Moon} 
+                  label="Moonlight" 
+                  isPro 
+                  active={user.theme === 'moonlight'} 
+                  onClick={() => {
+                    if (!isFeatureUnlocked(user, 'themes')) { onOpenPremium(); return; }
+                    setUser(prev => ({ ...prev, theme: 'moonlight' }));
+                    playSound('pop');
+                  }} 
+                  color="bg-[#0F172A] text-white" 
                 />
               </div>
 

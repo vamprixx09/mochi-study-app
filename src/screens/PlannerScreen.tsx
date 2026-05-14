@@ -178,6 +178,12 @@ export default function PlannerScreen({
   };
   const handleStartExamPrep = async () => {
     if (!prepSubject.trim()) return;
+
+    if (!isFeatureUnlocked(user, 'ai_advanced')) {
+      onOpenPremium();
+      return;
+    }
+
     setIsGeneratingPrep(true);
     setShowSubjectInput(false);
     try {
@@ -186,7 +192,16 @@ export default function PlannerScreen({
       setShowExamPrepModal(true);
       playSound('sparkle');
     } catch (err) {
-      alert("Failed to generate exam prep. Try again! 🥺");
+      console.error(err);
+      const isApiKeyError = err instanceof Error && (
+        err.message.includes('API_KEY_INVALID') || 
+        err.message.includes('403') || 
+        err.message.includes('401')
+      );
+      const msg = isApiKeyError 
+        ? "Mochi needs your AI magic! ✨ Please go to Settings -> Secrets and ensure your Gemini API key is set correctly. 🎀"
+        : "Failed to generate exam prep. Try again! 🥺";
+      alert(msg);
     } finally {
       setIsGeneratingPrep(false);
     }
@@ -245,13 +260,27 @@ export default function PlannerScreen({
   // AI Plan Logic
   const handleGeneratePlan = async () => {
     if (!planSubject || !planExamDate) return;
+
+    if (!isFeatureUnlocked(user, 'ai_advanced')) {
+      onOpenPremium();
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const plan = await generateStudyPlan(planSubject, planExamDate, planHours);
       setGeneratedPlan(plan);
     } catch (error) {
       console.error(error);
-      alert("Failed to generate plan. Mochi might be a bit sleepy... 🥺");
+      const isApiKeyError = error instanceof Error && (
+        error.message.includes('API_KEY_INVALID') || 
+        error.message.includes('403') || 
+        error.message.includes('401')
+      );
+      const msg = isApiKeyError 
+        ? "Mochi needs your AI magic! ✨ Please go to Settings -> Secrets and ensure your Gemini API key is set correctly. 🎀"
+        : "Failed to generate plan. Mochi might be a bit sleepy... 🥺";
+      alert(msg);
     } finally {
       setIsGenerating(false);
     }

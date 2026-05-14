@@ -56,11 +56,11 @@ export function calculateExpiryDate(plan: 'starter' | 'full' | 'lifetime'): stri
   return undefined; // Lifetime
 }
 
-export type PremiumFeature = 'ai_tools' | 'themes' | 'templates' | 'notes' | 'image_gen' | 'stickers';
+export type PremiumFeature = 'ai_advanced' | 'themes' | 'templates' | 'notes' | 'image_gen' | 'stickers' | 'ai_pdf' | 'ai_tutor';
 
 export const isFeatureUnlocked = (user: UserProfile, feature: PremiumFeature): boolean => {
-  // AI tools and Image generation are now free for everyone 🎀
-  if (feature === 'ai_tools' || feature === 'image_gen') return true;
+  // Basic AI chat and standard notes are free for everyone 🎀
+  if (feature === 'notes') return true;
 
   if (!user.isPremium) return false;
   
@@ -69,10 +69,9 @@ export const isFeatureUnlocked = (user: UserProfile, feature: PremiumFeature): b
   
   // Starter has limited features
   if (user.premiumPlan === 'starter') {
-    // Starter: Frames, Themes, Aesthetic packs (stickers)
+    // Starter: Frames, Themes, Aesthetic packs (stickers), Basic AI (but not PDF/Tutor)
     return ['themes', 'templates', 'stickers'].includes(feature);
   }
   
-  // High-level fallback for older premium users
   return true;
 };

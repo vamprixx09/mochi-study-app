@@ -1,4 +1,4 @@
-import { Home, MessageSquare, BookOpen, Calendar, User } from "lucide-react";
+import { Home, MessageSquare, BookOpen, Calendar, User, LayoutDashboard } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "../lib/utils";
 import { getTranslation } from "../lib/translations";
@@ -16,6 +16,7 @@ export const Navigation = ({ activeTab, setActiveTab, language }: NavigationProp
     { id: 'home', icon: Home, label: t('home'), color: 'bg-mochi-pink' },
     { id: 'ai', icon: MessageSquare, label: t('ai'), color: 'bg-mochi-lavender' },
     { id: 'flashcards', icon: BookOpen, label: t('flashcards'), color: 'bg-mochi-mint' },
+    { id: 'routine', icon: LayoutDashboard, label: t('routine'), color: 'bg-blue-200' },
     { id: 'planner', icon: Calendar, label: t('planner'), color: 'bg-mochi-blue' },
     { id: 'profile', icon: () => <span className="text-xl leading-none">ᯓᡣ𐭩</span>, label: t('profile'), color: 'bg-mochi-peach' },
   ];

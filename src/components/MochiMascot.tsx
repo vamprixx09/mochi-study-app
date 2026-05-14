@@ -1,10 +1,11 @@
 import { motion } from "motion/react";
 
-export const MochiMascot = ({ size = "md", className = "", onClick }: { size?: "sm" | "md" | "lg", className?: string, onClick?: () => void }) => {
+export const MochiMascot = ({ size = "md", className = "", onClick }: { size?: "sm" | "md" | "lg" | "xl", className?: string, onClick?: () => void }) => {
   const sizes = {
     sm: "w-16 h-12",
     md: "w-24 h-18",
-    lg: "w-32 h-24"
+    lg: "w-32 h-24",
+    xl: "w-48 h-36"
   };
 
   return (

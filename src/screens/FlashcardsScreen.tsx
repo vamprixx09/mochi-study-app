@@ -60,7 +60,7 @@ export default function FlashcardsScreen({ flashcards, setFlashcards, user, onOp
   const handleAIAdd = async () => {
     if (!aiTopic) return;
     
-    if (!isFeatureUnlocked(user, 'ai_tools')) {
+    if (!isFeatureUnlocked(user, 'ai_advanced')) {
       onOpenPremium();
       return;
     }
@@ -80,7 +80,15 @@ export default function FlashcardsScreen({ flashcards, setFlashcards, user, onOp
       setAiTopic('');
     } catch (error) {
       console.error(error);
-      alert("Failed to generate flashcards. Mochi is having a little trouble thinking... 🥺");
+      const isApiKeyError = error instanceof Error && (
+        error.message.includes('API_KEY_INVALID') || 
+        error.message.includes('403') || 
+        error.message.includes('401')
+      );
+      const msg = isApiKeyError 
+        ? "Mochi needs your AI magic! ✨ Please go to Settings -> Secrets and ensure your Gemini API key is set correctly. 🎀"
+        : "Failed to generate flashcards. Mochi is having a little trouble thinking... 🥺";
+      alert(msg);
     } finally {
       setIsLoading(false);
     }
