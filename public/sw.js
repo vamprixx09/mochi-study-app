@@ -3,6 +3,8 @@ const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/icon.png',
+  '/icon-512.png',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap'
 ];
 
@@ -47,11 +49,11 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request).then((fetchResponse) => {
-        // Only cache valid responses from the same origin or allowed CDN
+        // Only cache valid responses from the same origin
         if (
           fetchResponse && 
           fetchResponse.status === 200 && 
-          (fetchResponse.type === 'basic' || event.request.url.includes('drive.google.com'))
+          fetchResponse.type === 'basic'
         ) {
           const responseToCache = fetchResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
