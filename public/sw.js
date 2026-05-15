@@ -1,21 +1,20 @@
-const CACHE_NAME = 'mochi-study-v1';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'mochi-study-v2';
+const CRITICAL_ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json',
-  '/icon.png',
-  '/icon-512.png',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap'
+  '/manifest.json'
 ];
 
 self.addEventListener("install", (event) => {
-  console.log("Service Worker installed 🍡");
+  console.log("Mochi SW installing... 🍡");
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      console.log("Caching critical assets");
+      return cache.addAll(CRITICAL_ASSETS);
+    }).then(() => {
+      return self.skipWaiting();
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -49,11 +48,11 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request).then((fetchResponse) => {
-        // Only cache valid responses from the same origin
+        // Only cache valid responses from same origin or Drive CDN
         if (
           fetchResponse && 
           fetchResponse.status === 200 && 
-          fetchResponse.type === 'basic'
+          (fetchResponse.type === 'basic' || event.request.url.includes('drive.google.com') || event.request.url.includes('thumbnail'))
         ) {
           const responseToCache = fetchResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {

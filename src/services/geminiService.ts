@@ -68,7 +68,7 @@ export async function chatWithMochiStream(
     for await (const chunk of responseStream) {
       const text = chunk.text || "";
       fullText += text;
-      onChunk(text);
+      onChunk(fullText);
     }
     return fullText;
   } catch (error: any) {

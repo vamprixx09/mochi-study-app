@@ -2,40 +2,39 @@
   "name": "Mochi // Study ⋆°｡🕊️",
   "short_name": "Mochi",
   "description": "Your aesthetic AI-powered study companion.",
-  "id": "mochi-study-pwa",
-  "start_url": "/?source=pwa",
+  "id": "mochi-study-app",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#FFF7F4",
+  "theme_color": "#F7D7E3",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon.png",
+      "src": "https://em-content.zobj.net/source/apple/391/mochi_1f361.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "https://em-content.zobj.net/source/apple/391/mochi_1f361.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon.png",
+      "src": "https://em-content.zobj.net/source/apple/391/mochi_1f361.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "https://em-content.zobj.net/source/apple/391/mochi_1f361.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
   ],
-  "categories": ["education", "productivity", "lifestyle"],
-  "display_override": ["standalone", "browser"]
+  "categories": ["education", "productivity", "lifestyle"]
 }
 
