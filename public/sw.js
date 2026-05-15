@@ -33,18 +33,33 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  // Check if this is a navigation request
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match('/');
+      })
+    );
+    return;
+  }
+
+  // For other requests, try cache first, then network
   event.respondWith(
     caches.match(event.request).then((response) => {
-      // Return cached response if found, else fetch from network
       return response || fetch(event.request).then((fetchResponse) => {
-        // Optionally cache new assets here
+        // Only cache valid responses from the same origin or allowed CDN
+        if (
+          fetchResponse && 
+          fetchResponse.status === 200 && 
+          (fetchResponse.type === 'basic' || event.request.url.includes('drive.google.com'))
+        ) {
+          const responseToCache = fetchResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
         return fetchResponse;
       });
-    }).catch(() => {
-      // Fallback for offline mode
-      if (event.request.mode === 'navigate') {
-        return caches.match('/');
-      }
     })
   );
 });
